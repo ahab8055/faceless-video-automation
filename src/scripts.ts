@@ -8,6 +8,11 @@ import { Script, ViralScript } from './types';
 
 dotenv.config();
 
+// Constants for script generation
+const MAX_CAPTION_LENGTH = 150;
+const ELLIPSIS = '...';
+const ELLIPSIS_LENGTH = ELLIPSIS.length;
+
 /**
  * Generate a video script for a specific niche using Google Gemini AI
  * @param niche - The niche/topic for the video
@@ -130,7 +135,9 @@ HASHTAGS:
     const viralScript = parseViralScript(scriptText);
 
     // Save script to file with timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5); // YYYY-MM-DDTHH-MM-SS format
+    // Format: YYYY-MM-DDTHH-MM-SS (removes milliseconds .SSSZ from ISO string)
+    const isoString = new Date().toISOString();
+    const timestamp = isoString.substring(0, 19).replace(/[:.]/g, '-'); // Keep YYYY-MM-DDTHH:MM:SS, remove colons
     const scriptPath = path.join(process.cwd(), 'scripts', `${timestamp}.txt`);
     
     await fs.ensureDir(path.join(process.cwd(), 'scripts'));
@@ -183,9 +190,9 @@ export function parseViralScript(scriptText: string): ViralScript {
     const captionMatch = scriptText.match(/CAPTION:\s*\n([\s\S]*?)(?=\n\s*HASHTAGS:|$)/i);
     if (captionMatch) {
       result.caption = captionMatch[1].trim();
-      // Ensure caption is under 150 characters
-      if (result.caption.length > 150) {
-        result.caption = result.caption.substring(0, 147) + '...';
+      // Ensure caption is under maximum length
+      if (result.caption.length > MAX_CAPTION_LENGTH) {
+        result.caption = result.caption.substring(0, MAX_CAPTION_LENGTH - ELLIPSIS_LENGTH) + ELLIPSIS;
       }
     }
 
@@ -198,7 +205,7 @@ export function parseViralScript(scriptText: string): ViralScript {
     // Fallback: if parsing failed, use the entire text as script
     if (!result.script) {
       result.script = scriptText;
-      result.caption = scriptText.substring(0, 147) + '...';
+      result.caption = scriptText.substring(0, MAX_CAPTION_LENGTH - ELLIPSIS_LENGTH) + ELLIPSIS;
       result.hashtags = '#viral #shorts';
     }
 
@@ -206,7 +213,7 @@ export function parseViralScript(scriptText: string): ViralScript {
     console.error('⚠️  Warning: Error parsing viral script:', (error as Error).message);
     // Provide fallback values
     result.script = scriptText;
-    result.caption = scriptText.substring(0, Math.min(150, scriptText.length));
+    result.caption = scriptText.substring(0, Math.min(MAX_CAPTION_LENGTH, scriptText.length));
     result.hashtags = '#viral #shorts';
   }
 
