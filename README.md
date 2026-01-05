@@ -3,10 +3,11 @@
 A Node.js CLI tool for automated faceless short-form video generation using AI-powered scripts, free stock footage from Pexels, and FFmpeg for video editing.
 
 **Built with TypeScript** for type safety and improved developer experience.
+**Powered by Mistral AI** for intelligent script generation.
 
 ## Features
 
-- 🤖 AI-powered script generation using Google Gemini
+- 🤖 AI-powered script generation using Mistral AI
 - 🎥 Automatic stock footage download from Pexels
 - 🎬 Video editing and assembly with FFmpeg
 - 🗣️ Text-to-speech audio generation
@@ -18,7 +19,7 @@ A Node.js CLI tool for automated faceless short-form video generation using AI-p
 - Node.js (v16 or higher)
 - pnpm (recommended) or npm
 - FFmpeg installed on your system
-- Google API key (for Gemini AI)
+- Mistral AI API key
 - Pexels API key (free tier available)
 
 ## Installation
@@ -116,7 +117,7 @@ TypeScript type definitions:
 - Command options types
 
 ### src/scripts.ts
-Handles AI-powered script generation using Google Gemini:
+Handles AI-powered script generation using Mistral AI:
 - Generate engaging short-form content
 - Format scripts for video narration
 - Save scripts with metadata
@@ -161,10 +162,10 @@ Make sure FFmpeg is installed and in your system PATH:
 
 ### API Rate Limits
 - Pexels free tier: 200 requests per hour
-- Gemini API: Check your quota in Google Cloud Console
+- Mistral AI: Check your quota in Mistral Console
 
 ### Missing API Keys
-If you see "GOOGLE_API_KEY not found" or "PEXELS_API_KEY not found" errors:
+If you see "MISTRAL_API_KEY not found" or "PEXELS_API_KEY not found" errors:
 1. Make sure you've created a `.env` file in the project root
 2. Copy the contents from `.env.example`
 3. Replace the placeholder values with your actual API keys

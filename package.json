@@ -11,7 +11,10 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "generate": "node dist/index.js generate",
+    "run": "node dist/index.js run",
+    "batch": "node dist/index.js batch"
   },
   "keywords": [
     "video",
@@ -24,7 +27,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@langchain/google-genai": "^2.1.3",
+    "@mistralai/mistralai": "^1.11.0",
     "axios": "^1.13.2",
     "commander": "^14.0.2",
     "dotenv": "^17.2.3",

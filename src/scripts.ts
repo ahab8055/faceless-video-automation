@@ -2,7 +2,7 @@
 
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { Mistral } from '@mistralai/mistralai';
 import * as dotenv from 'dotenv';
 import { Script, ViralScript } from './types';
 
@@ -14,7 +14,7 @@ const ELLIPSIS = '...';
 const ELLIPSIS_LENGTH = ELLIPSIS.length;
 
 /**
- * Generate a video script for a specific niche using Google Gemini AI
+ * Generate a video script for a specific niche using Mistral AI
  * @param niche - The niche/topic for the video
  * @returns The parsed script object
  */
@@ -22,16 +22,12 @@ export async function generateScript(niche: string): Promise<Script> {
   try {
     console.log(`🤖 Generating script for niche: ${niche}...`);
 
-    if (!process.env.GOOGLE_API_KEY) {
-      throw new Error('GOOGLE_API_KEY not found in environment variables');
+    if (!process.env.MISTRAL_API_KEY) {
+      throw new Error('MISTRAL_API_KEY not found in environment variables');
     }
 
-    // Initialize Gemini AI model (using Gemini 1.5 Flash for free tier)
-    const model = new ChatGoogleGenerativeAI({
-      model: 'gemini-1.5-flash',
-      apiKey: process.env.GOOGLE_API_KEY,
-      temperature: 0.9,
-    });
+    // Initialize Mistral AI
+    const client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });
 
     // Create prompt for script generation
     const prompt = `Create an engaging 60-second short-form video script about ${niche}.
@@ -53,8 +49,15 @@ SEARCH_TERMS:
 Keep the language conversational and dynamic. Make every word count for maximum impact in 60 seconds.`;
 
     // Generate script using AI
-    const response = await model.invoke(prompt);
-    const scriptText = response.content as string;
+    const chatResponse = await client.chat.complete({
+      model: 'mistral-large-latest',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.9,
+    });
+    
+    const scriptText = typeof chatResponse.choices?.[0]?.message?.content === 'string' 
+      ? chatResponse.choices[0].message.content 
+      : '';
 
     // Parse the script into sections
     const parsed = parseScript(scriptText);
@@ -78,7 +81,7 @@ Keep the language conversational and dynamic. Make every word count for maximum 
 }
 
 /**
- * Generate a viral video script for a specific niche using Google Gemini AI (Gemini 1.5 Flash)
+ * Generate a viral video script for a specific niche using Mistral AI
  * Returns script, caption, and hashtags format suitable for social media
  * @param niche - The niche/topic for the video
  * @returns Object with script, caption, and hashtags
@@ -87,8 +90,8 @@ export async function generateViralScript(niche: string): Promise<ViralScript> {
   try {
     console.log(`🤖 Generating viral script for niche: ${niche}...`);
 
-    if (!process.env.GOOGLE_API_KEY) {
-      throw new Error('GOOGLE_API_KEY not found in environment variables');
+    if (!process.env.MISTRAL_API_KEY) {
+      throw new Error('MISTRAL_API_KEY not found in environment variables');
     }
 
     // Validate niche input
@@ -96,12 +99,8 @@ export async function generateViralScript(niche: string): Promise<ViralScript> {
       throw new Error('Niche parameter cannot be empty');
     }
 
-    // Initialize Gemini 1.5 Flash model (free tier)
-    const model = new ChatGoogleGenerativeAI({
-      model: 'gemini-1.5-flash',
-      apiKey: process.env.GOOGLE_API_KEY,
-      temperature: 0.9,
-    });
+    // Initialize Mistral AI
+    const client = new Mistral({ apiKey: process.env.MISTRAL_API_KEY });
 
     // Create prompt for viral script generation
     const prompt = `Create a viral 30-second faceless Short script about ${niche}. 
@@ -127,9 +126,16 @@ HASHTAGS:
 [Write 10 hashtags separated by spaces, e.g., #niche1 #niche2 #niche3]`;
 
     // Generate script using AI
-    console.log('⏳ Calling Gemini 1.5 Flash API...');
-    const response = await model.invoke(prompt);
-    const scriptText = response.content as string;
+    console.log('⏳ Calling Mistral AI API...');
+    const chatResponse = await client.chat.complete({
+      model: 'mistral-large-latest',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.9,
+    });
+    
+    const scriptText = typeof chatResponse.choices?.[0]?.message?.content === 'string' 
+      ? chatResponse.choices[0].message.content 
+      : '';
 
     // Parse the response into structured format
     const viralScript = parseViralScript(scriptText);

@@ -33,8 +33,8 @@ program
       console.log('═══════════════════════════════════════════════════\n');
 
       // Check environment variables
-      if (!process.env.GOOGLE_API_KEY) {
-        console.error('❌ Error: GOOGLE_API_KEY not found in .env file');
+      if (!process.env.MISTRAL_API_KEY) {
+        console.error('❌ Error: MISTRAL_API_KEY not found in .env file');
         console.log('   Please create a .env file with your API keys.');
         console.log('   See .env.example for reference.\n');
         process.exit(1);
@@ -78,9 +78,9 @@ program
       console.log('═══════════════════════════════════════════════════\n');
 
       // Check environment variables
-      if (!process.env.GOOGLE_API_KEY || !process.env.PEXELS_API_KEY) {
+      if (!process.env.MISTRAL_API_KEY || !process.env.PEXELS_API_KEY) {
         console.error('❌ Error: Required API keys not found in .env file');
-        console.log('   Required: GOOGLE_API_KEY, PEXELS_API_KEY');
+        console.log('   Required: MISTRAL_API_KEY, PEXELS_API_KEY');
         console.log('   Please create a .env file with your API keys.');
         console.log('   See .env.example for reference.\n');
         process.exit(1);
@@ -144,9 +144,9 @@ program
       console.log(`📋 Processing ${niches.length} niche(s): ${niches.join(', ')}\n`);
 
       // Check environment variables
-      if (!process.env.GOOGLE_API_KEY || !process.env.PEXELS_API_KEY) {
+      if (!process.env.MISTRAL_API_KEY || !process.env.PEXELS_API_KEY) {
         console.error('❌ Error: Required API keys not found in .env file');
-        console.log('   Required: GOOGLE_API_KEY, PEXELS_API_KEY');
+        console.log('   Required: MISTRAL_API_KEY, PEXELS_API_KEY');
         console.log('   Please create a .env file with your API keys.');
         console.log('   See .env.example for reference.\n');
         process.exit(1);
