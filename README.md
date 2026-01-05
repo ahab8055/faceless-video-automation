@@ -2,6 +2,8 @@
 
 A Node.js CLI tool for automated faceless short-form video generation using AI-powered scripts, free stock footage from Pexels, and FFmpeg for video editing.
 
+**Built with TypeScript** for type safety and improved developer experience.
+
 ## Features
 
 - 🤖 AI-powered script generation using Google Gemini
@@ -14,6 +16,7 @@ A Node.js CLI tool for automated faceless short-form video generation using AI-p
 ## Prerequisites
 
 - Node.js (v16 or higher)
+- pnpm (recommended) or npm
 - FFmpeg installed on your system
 - Google API key (for Gemini AI)
 - Pexels API key (free tier available)
@@ -27,15 +30,27 @@ cd faceless-video-automation
 ```
 
 2. Install dependencies:
-```bash
-npm install
+pnpm install
 ```
 
+3. Build the TypeScript project:
+```bash
+pnpm build
+```
+
+4
 3. Set up environment variables:
 ```bash
 cp .env.example .env
 ```
 
+
+## Scripts
+
+- `pnpm build` - Compile TypeScript to JavaScript
+- `pnpm start` - Run the compiled CLI
+- `pnpm dev` - Run TypeScript directly with ts-node (for development)
+- `pnpm watch` - Watch mode for development
 4. Edit `.env` and add your API keys:
 ```
 GOOGLE_API_KEY=your_gemini_api_key_here
@@ -54,42 +69,39 @@ PEXELS_API_KEY=your_pexels_api_key_here
 1. Visit [Pexels API](https://www.pexels.com/api/)
 2. Sign up for a free account
 3. Navigate to your API section
-4. Copy your API key and paste into your `.env` file
-
-## Usage
-
-### Generate Script
-Generate a video script for a specific niche:
-```bash
-npm start generate [niche]
-# Example: npm start generate "motivational quotes"
+pnpm start generate [niche]
+# Example: pnpm start generate "motivational quotes"
 ```
 
 ### Run Single Video
 Process and create a complete video for a niche:
 ```bash
-npm start run [niche]
-# Example: npm start run "tech tips"
+pnpm start run [niche]
+# Example: pnpm start run "tech tips"
+```
+
+### Batch Process
+Create multiple videos at once:
+```bash
+pnpm start batch [niche1,niche2,...]
+# Example: pnpm start run "tech tips"
 ```
 
 ### Batch Process
 Create multiple videos at once:
 ```bash
 npm start batch [niche1,niche2,...]
-# Example: npm start batch "fitness,cooking,travel"
-```
-
-## Project Structure
-
-```
-faceless-video-automation/
-├── assets/              # Downloaded media assets (videos, images, audio)
+# Exsrc/                 # TypeScript source files
+│   ├── index.ts         # Main CLI entry point
+│   ├── scripts.ts       # Script generation module
+│   ├── downloads.ts     # Asset download module
+│   ├── editor.ts        # Video editing module
+│   └── types.ts         # TypeScript type definitions
+├── dist/                # Compiled JavaScript output
+├── assets/              # Downloaded media assets
 ├── output/              # Generated videos
 ├── scripts/             # Generated scripts and metadata
-├── index.js             # Main CLI entry point
-├── scripts.js           # Script generation module
-├── downloads.js         # Asset download module
-├── editor.js            # Video editing module
+├── tsconfig.json        # TypeScript configuration
 ├── package.json         # Project dependencies
 ├── .env.example         # Environment template
 └── README.md           # Documentation
@@ -97,12 +109,25 @@ faceless-video-automation/
 
 ## Modules
 
-### scripts.js
+### src/types.ts
+TypeScript type definitions:
+- Script, Assets, and API response interfaces
+- FFmpeg metadata and progress types
+- Command options types
+
+### src/scripts.ts
 Handles AI-powered script generation using Google Gemini:
 - Generate engaging short-form content
 - Format scripts for video narration
 - Save scripts with metadata
 
+### src/downloads.ts
+Manages media asset downloads: 
+- Search and download Pexels videos
+- Download images for thumbnails
+- Generate TTS audio from scripts
+
+### src/editor.t
 ### downloads.js
 Manages media asset downloads: 
 - Search and download Pexels videos

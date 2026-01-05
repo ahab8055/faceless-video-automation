@@ -2,13 +2,16 @@
   "name": "faceless-video-automation",
   "version": "1.0.0",
   "description": "A Node.js CLI tool for automated faceless short-form video generation using AI-powered scripts, free stock footage from Pexels, and FFmpeg for video editing.",
-  "main": "index.js",
+  "main": "dist/index.js",
   "bin": {
-    "faceless-video": "./index.js"
+    "faceless-video": "./dist/index.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "watch": "tsc --watch"
   },
   "keywords": [
     "video",
@@ -28,5 +31,12 @@
     "fluent-ffmpeg": "^2.1.3",
     "fs-extra": "^11.3.3",
     "google-tts-api": "^2.0.2"
+  },
+  "devDependencies": {
+    "@types/fluent-ffmpeg": "^2.1.28",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^25.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }

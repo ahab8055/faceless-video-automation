@@ -1,18 +1,21 @@
 #!/usr/bin/env node
 
-const fs = require('fs-extra');
-const path = require('path');
-const axios = require('axios');
-const googleTTS = require('google-tts-api');
-require('dotenv').config();
+import * as fs from 'fs-extra';
+import * as path from 'path';
+import axios, { AxiosResponse } from 'axios';
+import * as googleTTS from 'google-tts-api';
+import * as dotenv from 'dotenv';
+import { Script, PexelsVideo, PexelsSearchResponse, Assets } from './types';
+
+dotenv.config();
 
 /**
  * Search for videos on Pexels based on search terms
- * @param {string} query - Search query for videos
- * @param {number} perPage - Number of results per page
- * @returns {Promise<Array>} Array of video objects
+ * @param query - Search query for videos
+ * @param perPage - Number of results per page
+ * @returns Array of video objects
  */
-async function searchPexelsVideos(query, perPage = 5) {
+export async function searchPexelsVideos(query: string, perPage: number = 5): Promise<PexelsVideo[]> {
   try {
     console.log(`🔍 Searching Pexels for: "${query}"...`);
 
@@ -20,7 +23,7 @@ async function searchPexelsVideos(query, perPage = 5) {
       throw new Error('PEXELS_API_KEY not found in environment variables');
     }
 
-    const response = await axios.get('https://api.pexels.com/videos/search', {
+    const response: AxiosResponse<PexelsSearchResponse> = await axios.get('https://api.pexels.com/videos/search', {
       headers: {
         'Authorization': process.env.PEXELS_API_KEY
       },
@@ -36,18 +39,18 @@ async function searchPexelsVideos(query, perPage = 5) {
     return response.data.videos;
 
   } catch (error) {
-    console.error(`❌ Error searching Pexels for "${query}":`, error.message);
+    console.error(`❌ Error searching Pexels for "${query}":`, (error as Error).message);
     throw error;
   }
 }
 
 /**
  * Download a video from URL to local file
- * @param {string} url - URL of the video to download
- * @param {string} outputPath - Path where video should be saved
- * @returns {Promise<string>} Path to downloaded file
+ * @param url - URL of the video to download
+ * @param outputPath - Path where video should be saved
+ * @returns Path to downloaded file
  */
-async function downloadVideo(url, outputPath) {
+export async function downloadVideo(url: string, outputPath: string): Promise<string> {
   try {
     console.log(`⬇️  Downloading video from: ${url}`);
 
@@ -62,7 +65,7 @@ async function downloadVideo(url, outputPath) {
 
     response.data.pipe(writer);
 
-    return new Promise((resolve, reject) => {
+    return new Promise<string>((resolve, reject) => {
       writer.on('finish', () => {
         console.log(`✅ Video downloaded to: ${outputPath}`);
         resolve(outputPath);
@@ -71,23 +74,23 @@ async function downloadVideo(url, outputPath) {
     });
 
   } catch (error) {
-    console.error('❌ Error downloading video:', error.message);
+    console.error('❌ Error downloading video:', (error as Error).message);
     throw error;
   }
 }
 
 /**
  * Download HD portrait videos for a script's search terms
- * @param {Array} searchTerms - Array of search terms from script
- * @param {string} niche - The niche/topic name for organizing files
- * @returns {Promise<Array>} Array of downloaded video file paths
+ * @param searchTerms - Array of search terms from script
+ * @param niche - The niche/topic name for organizing files
+ * @returns Array of downloaded video file paths
  */
-async function downloadVideosForScript(searchTerms, niche) {
+export async function downloadVideosForScript(searchTerms: string[], niche: string): Promise<string[]> {
   try {
     const assetsDir = path.join(process.cwd(), 'assets', niche.replace(/\s+/g, '-'));
     await fs.ensureDir(assetsDir);
 
-    const downloadedVideos = [];
+    const downloadedVideos: string[] = [];
     const videosPerTerm = 2; // Download 2 videos per search term
 
     for (const term of searchTerms) {
@@ -115,7 +118,7 @@ async function downloadVideosForScript(searchTerms, niche) {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
       } catch (error) {
-        console.warn(`⚠️  Warning: Could not download videos for term "${term}": ${error.message}`);
+        console.warn(`⚠️  Warning: Could not download videos for term "${term}": ${(error as Error).message}`);
       }
     }
 
@@ -123,18 +126,18 @@ async function downloadVideosForScript(searchTerms, niche) {
     return downloadedVideos;
 
   } catch (error) {
-    console.error('❌ Error downloading videos for script:', error.message);
+    console.error('❌ Error downloading videos for script:', (error as Error).message);
     throw error;
   }
 }
 
 /**
  * Generate TTS audio from text using Google TTS API
- * @param {string} text - Text to convert to speech
- * @param {string} outputPath - Path where audio should be saved
- * @returns {Promise<string>} Path to generated audio file
+ * @param text - Text to convert to speech
+ * @param outputPath - Path where audio should be saved
+ * @returns Path to generated audio file
  */
-async function generateTTS(text, outputPath) {
+export async function generateTTS(text: string, outputPath: string): Promise<string> {
   try {
     console.log(`🗣️  Generating TTS audio...`);
 
@@ -159,7 +162,7 @@ async function generateTTS(text, outputPath) {
 
     response.data.pipe(writer);
 
-    return new Promise((resolve, reject) => {
+    return new Promise<string>((resolve, reject) => {
       writer.on('finish', () => {
         console.log(`✅ TTS audio saved to: ${outputPath}`);
         resolve(outputPath);
@@ -168,18 +171,18 @@ async function generateTTS(text, outputPath) {
     });
 
   } catch (error) {
-    console.error('❌ Error generating TTS:', error.message);
+    console.error('❌ Error generating TTS:', (error as Error).message);
     throw error;
   }
 }
 
 /**
  * Generate TTS audio for a script's narration text
- * @param {Object} script - The script object containing narration text
- * @param {string} niche - The niche/topic name for organizing files
- * @returns {Promise<string>} Path to generated audio file
+ * @param script - The script object containing narration text
+ * @param niche - The niche/topic name for organizing files
+ * @returns Path to generated audio file
  */
-async function generateTTSForScript(script, niche) {
+export async function generateTTSForScript(script: Script, niche: string): Promise<string> {
   try {
     const assetsDir = path.join(process.cwd(), 'assets', niche.replace(/\s+/g, '-'));
     await fs.ensureDir(assetsDir);
@@ -195,18 +198,18 @@ async function generateTTSForScript(script, niche) {
     return audioPath;
 
   } catch (error) {
-    console.error('❌ Error generating TTS for script:', error.message);
+    console.error('❌ Error generating TTS for script:', (error as Error).message);
     throw error;
   }
 }
 
 /**
  * Download all assets (videos and audio) for a script
- * @param {Object} script - The script object
- * @param {string} niche - The niche/topic name
- * @returns {Promise<Object>} Object containing paths to downloaded assets
+ * @param script - The script object
+ * @param niche - The niche/topic name
+ * @returns Object containing paths to downloaded assets
  */
-async function downloadAllAssets(script, niche) {
+export async function downloadAllAssets(script: Script, niche: string): Promise<Assets> {
   try {
     console.log(`📦 Downloading all assets for niche: ${niche}...`);
 
@@ -220,20 +223,11 @@ async function downloadAllAssets(script, niche) {
 
     return {
       videos: videoFiles,
-      audio: audioFile
+      audio: [audioFile]
     };
 
   } catch (error) {
-    console.error('❌ Error downloading all assets:', error.message);
+    console.error('❌ Error downloading all assets:', (error as Error).message);
     throw error;
   }
 }
-
-module.exports = {
-  searchPexelsVideos,
-  downloadVideo,
-  downloadVideosForScript,
-  generateTTS,
-  generateTTSForScript,
-  downloadAllAssets
-};

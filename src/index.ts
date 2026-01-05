@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 
-const { Command } = require('commander');
-const path = require('path');
-const fs = require('fs-extra');
-require('dotenv').config();
+import { Command } from 'commander';
+import * as path from 'path';
+import * as fs from 'fs-extra';
+import * as dotenv from 'dotenv';
 
-const { generateScript, loadScript } = require('./scripts');
-const { downloadAllAssets } = require('./downloads');
-const { createVideo, checkFFmpeg } = require('./editor');
+import { generateScript, loadScript } from './scripts';
+import { downloadAllAssets } from './downloads';
+import { createVideo, checkFFmpeg } from './editor';
+
+dotenv.config();
 
 const program = new Command();
 
@@ -24,7 +26,7 @@ program
   .command('generate')
   .description('Generate a video script for a specific niche')
   .argument('<niche>', 'The niche/topic for the video (e.g., "motivational quotes")')
-  .action(async (niche) => {
+  .action(async (niche: string) => {
     try {
       console.log('═══════════════════════════════════════════════════');
       console.log('🎬 FACELESS VIDEO AUTOMATION - GENERATE SCRIPT');
@@ -50,10 +52,10 @@ program
       console.log('─────────────────────────────────────────────────');
 
       console.log('\n✅ Script generation complete!');
-      console.log(`   Use 'npm start run ${niche}' to create the full video.\n`);
+      console.log(`   Use 'pnpm start run ${niche}' to create the full video.\n`);
 
     } catch (error) {
-      console.error('\n❌ Script generation failed:', error.message);
+      console.error('\n❌ Script generation failed:', (error as Error).message);
       process.exit(1);
     }
   });
@@ -65,7 +67,7 @@ program
   .command('run')
   .description('Process and create a complete video for a specific niche')
   .argument('<niche>', 'The niche/topic for the video (e.g., "tech tips")')
-  .action(async (niche) => {
+  .action(async (niche: string) => {
     try {
       console.log('═══════════════════════════════════════════════════');
       console.log('🎬 FACELESS VIDEO AUTOMATION - FULL PIPELINE');
@@ -111,7 +113,7 @@ program
       console.log('═══════════════════════════════════════════════════\n');
 
     } catch (error) {
-      console.error('\n❌ Video creation failed:', error.message);
+      console.error('\n❌ Video creation failed:', (error as Error).message);
       process.exit(1);
     }
   });
@@ -123,7 +125,7 @@ program
   .command('batch')
   .description('Batch process multiple niches and create videos')
   .argument('<niches>', 'Comma-separated list of niches (e.g., "fitness,cooking,travel")')
-  .action(async (nichesArg) => {
+  .action(async (nichesArg: string) => {
     try {
       const niches = nichesArg.split(',').map(n => n.trim()).filter(n => n.length > 0);
 
@@ -153,7 +155,10 @@ program
         process.exit(1);
       }
 
-      const results = {
+      const results: {
+        successful: Array<{ niche: string; videoPath: string }>;
+        failed: Array<{ niche: string; error: string }>;
+      } = {
         successful: [],
         failed: []
       };
@@ -188,8 +193,8 @@ program
           }
 
         } catch (error) {
-          results.failed.push({ niche, error: error.message });
-          console.error(`❌ Failed: ${niche} - ${error.message}`);
+          results.failed.push({ niche, error: (error as Error).message });
+          console.error(`❌ Failed: ${niche} - ${(error as Error).message}`);
         }
       }
 
@@ -217,7 +222,7 @@ program
       console.log('\n═══════════════════════════════════════════════════\n');
 
     } catch (error) {
-      console.error('\n❌ Batch processing failed:', error.message);
+      console.error('\n❌ Batch processing failed:', (error as Error).message);
       process.exit(1);
     }
   });
