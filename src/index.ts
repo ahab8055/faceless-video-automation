@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as dotenv from 'dotenv';
 
-import { generateScript, loadScript } from './scripts';
+import { generateScript, generateViralScript, loadScript } from './scripts';
 import { downloadAllAssets } from './downloads';
 import { createVideo, checkFFmpeg } from './editor';
 
@@ -40,18 +40,22 @@ program
         process.exit(1);
       }
 
-      // Generate script
-      const script = await generateScript(niche);
+      // Generate viral script
+      const viralScript = await generateViralScript(niche);
 
-      console.log('\n📝 Script Preview:');
+      console.log('\n📝 Generated Content:');
       console.log('─────────────────────────────────────────────────');
-      console.log(`Hook: ${script.hook}`);
-      console.log(`\nContent: ${script.content}`);
-      console.log(`\nCTA: ${script.cta}`);
-      console.log(`\nSearch Terms: ${script.searchTerms.join(', ')}`);
+      console.log('\n🎬 SCRIPT:');
+      console.log(viralScript.script);
+      console.log('\n📱 CAPTION:');
+      console.log(viralScript.caption);
+      console.log(`   (${viralScript.caption.length} characters)`);
+      console.log('\n🏷️  HASHTAGS:');
+      console.log(viralScript.hashtags);
       console.log('─────────────────────────────────────────────────');
 
       console.log('\n✅ Script generation complete!');
+      console.log(`   Script saved to scripts/[timestamp].txt`);
       console.log(`   Use 'pnpm start run ${niche}' to create the full video.\n`);
 
     } catch (error) {

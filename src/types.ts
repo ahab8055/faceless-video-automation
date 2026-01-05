@@ -14,6 +14,13 @@ export interface Script {
   generatedAt?: string;
 }
 
+// New script format for viral videos
+export interface ViralScript {
+  script: string;      // Full spoken text for the video
+  caption: string;     // Short version for post description (under 150 chars)
+  hashtags: string;    // 10 relevant hashtags
+}
+
 // Assets types
 export interface Assets {
   videos: string[];
