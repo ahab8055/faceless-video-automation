@@ -22,7 +22,7 @@ A Node.js CLI tool for automated faceless short-form video generation using AI-p
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/ahab8055/faceless-video-automation.git
+git clone https://github.com/ahab8055/faceless-video-automation. git
 cd faceless-video-automation
 ```
 
@@ -91,7 +91,7 @@ faceless-video-automation/
 ├── downloads.js         # Asset download module
 ├── editor.js            # Video editing module
 ├── package.json         # Project dependencies
-├── .env.example         # Environment template
+├── . env.example         # Environment template
 └── README.md           # Documentation
 ```
 
@@ -130,32 +130,13 @@ To contribute or modify:
 
 ### FFmpeg not found
 Make sure FFmpeg is installed and in your system PATH:
-- **Windows**: Download from [ffmpeg.org](https://ffmpeg.org/download.html)
+- **Windows**: Download from [ffmpeg. org](https://ffmpeg.org/download.html)
 - **Mac**: `brew install ffmpeg`
 - **Linux**: `sudo apt-get install ffmpeg`
 
 ### API Rate Limits
 - Pexels free tier: 200 requests per hour
 - Gemini API: Check your quota in Google Cloud Console
-
-### Missing API Keys
-If you see "GOOGLE_API_KEY not found" or "PEXELS_API_KEY not found" errors:
-1. Make sure you've created a `.env` file in the project root
-2. Copy the contents from `.env.example`
-3. Replace the placeholder values with your actual API keys
-4. Save the file and try again
-
-### Videos Not Downloading
-- Check your Pexels API key is valid
-- Ensure you haven't exceeded the rate limit (200 requests/hour)
-- Check your internet connection
-- Some search terms may not return results - try different terms
-
-### Video Creation Fails
-- Verify FFmpeg is installed: run `ffmpeg -version` in terminal
-- Check that downloaded videos are in the assets directory
-- Ensure sufficient disk space for video processing
-- Check the output logs for specific error messages
 
 ## License
 
