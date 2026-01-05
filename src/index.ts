@@ -6,7 +6,7 @@ import * as fs from 'fs-extra';
 import * as dotenv from 'dotenv';
 
 import { generateScript, generateViralScript, loadScript } from './scripts';
-import { downloadAllAssets } from './downloads';
+import { downloadAllAssets, downloadAssets } from './downloads';
 import { createVideo, checkFFmpeg } from './editor';
 
 dotenv.config();
@@ -118,6 +118,75 @@ program
 
     } catch (error) {
       console.error('\n❌ Video creation failed:', (error as Error).message);
+      process.exit(1);
+    }
+  });
+
+/**
+ * Download command - Download assets for a custom query
+ */
+program
+  .command('download')
+  .description('Download video/photo assets from Pexels for a custom query')
+  .argument('[query]', 'Search query or text to extract keywords from (e.g., "ocean waves sunset")')
+  .option('-c, --count <number>', 'Number of assets to download', '8')
+  .action(async (query: string | undefined, options: { count: string }) => {
+    try {
+      console.log('═══════════════════════════════════════════════════');
+      console.log('🎬 FACELESS VIDEO AUTOMATION - DOWNLOAD ASSETS');
+      console.log('═══════════════════════════════════════════════════\n');
+
+      // Check environment variables
+      if (!process.env.PEXELS_API_KEY) {
+        console.error('❌ Error: PEXELS_API_KEY not found in .env file');
+        console.log('   Please create a .env file with your Pexels API key.');
+        console.log('   See .env.example for reference.\n');
+        process.exit(1);
+      }
+
+      // If no query provided, prompt for one
+      if (!query) {
+        console.error('❌ Error: No query provided');
+        console.log('   Usage: pnpm start download "your search query"');
+        console.log('   Example: pnpm start download "ocean waves sunset"\n');
+        process.exit(1);
+      }
+
+      const count = parseInt(options.count, 10);
+      if (isNaN(count) || count < 1 || count > 50) {
+        console.error('❌ Error: Count must be a number between 1 and 50');
+        process.exit(1);
+      }
+
+      // Download assets
+      const result = await downloadAssets(query, count);
+
+      // Display results
+      console.log('═══════════════════════════════════════════════════');
+      console.log('✅ DOWNLOAD COMPLETE!');
+      console.log('═══════════════════════════════════════════════════\n');
+      console.log(`📁 Directory: ${result.directory}`);
+      console.log(`📊 Total Assets: ${result.assets.length}`);
+      console.log(`   🎥 Videos: ${result.assets.filter(a => a.type === 'video').length}`);
+      console.log(`   📷 Photos: ${result.assets.filter(a => a.type === 'photo').length}`);
+      
+      if (result.extractedKeywords && result.extractedKeywords.length > 0) {
+        console.log(`\n🔑 Extracted Keywords: ${result.extractedKeywords.join(', ')}`);
+      }
+      
+      console.log('\n📄 Asset Details:');
+      result.assets.forEach((asset, index) => {
+        const icon = asset.type === 'video' ? '🎥' : '📷';
+        const duration = asset.duration ? ` (${asset.duration.toFixed(1)}s)` : '';
+        const aspectRatioLabel = asset.aspectRatio < 0.75 ? '📱 Vertical' : '🖼️  Horizontal';
+        console.log(`   ${index + 1}. ${icon} ${asset.type.toUpperCase()}${duration} - ${aspectRatioLabel}`);
+        console.log(`      ${path.basename(asset.path)}`);
+      });
+      
+      console.log('\n═══════════════════════════════════════════════════\n');
+
+    } catch (error) {
+      console.error('\n❌ Asset download failed:', (error as Error).message);
       process.exit(1);
     }
   });
