@@ -11,6 +11,9 @@ import { createVideo, checkFFmpeg } from './editor';
 
 dotenv.config();
 
+// Constants
+const VERTICAL_ASPECT_RATIO_THRESHOLD = 0.75; // Aspect ratio threshold for vertical format
+
 const program = new Command();
 
 // Configure CLI
@@ -178,7 +181,7 @@ program
       result.assets.forEach((asset, index) => {
         const icon = asset.type === 'video' ? '🎥' : '📷';
         const duration = asset.duration ? ` (${asset.duration.toFixed(1)}s)` : '';
-        const aspectRatioLabel = asset.aspectRatio < 0.75 ? '📱 Vertical' : '🖼️  Horizontal';
+        const aspectRatioLabel = asset.aspectRatio < VERTICAL_ASPECT_RATIO_THRESHOLD ? '📱 Vertical' : '🖼️  Horizontal';
         console.log(`   ${index + 1}. ${icon} ${asset.type.toUpperCase()}${duration} - ${aspectRatioLabel}`);
         console.log(`      ${path.basename(asset.path)}`);
       });

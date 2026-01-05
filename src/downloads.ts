@@ -18,6 +18,10 @@ import {
 
 dotenv.config();
 
+// Constants for asset downloading
+const VIDEO_PREFERENCE_RATIO = 0.8; // Prefer 80% videos
+const VERTICAL_ASPECT_RATIO_THRESHOLD = 0.75; // Aspect ratio threshold for vertical format
+
 /**
  * Search for videos on Pexels based on search terms
  * @param query - Search query for videos
@@ -297,12 +301,16 @@ export function extractKeywords(text: string): string[] {
  * @returns Sanitized filename
  */
 function sanitizeFilename(filename: string): string {
-  return filename
+  const sanitized = filename
     .toLowerCase()
     .replace(/[^\w\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
     .trim();
+  
+  // Ensure non-empty filename with fallback
+  return sanitized || 'asset';
 }
 
 /**
@@ -311,7 +319,8 @@ function sanitizeFilename(filename: string): string {
  */
 function createTimestampedDirectory(): { dir: string; timestamp: string } {
   const now = new Date();
-  const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19); // YYYY-MM-DDTHH-MM-SS
+  // Format: YYYY-MM-DDTHH-MM-SS (replacing colons and dots for filesystem compatibility)
+  const timestamp = now.toISOString().split('.')[0].replace(/:/g, '-');
   const assetsDir = path.join(process.cwd(), 'assets', timestamp);
   return { dir: assetsDir, timestamp };
 }
@@ -337,7 +346,7 @@ function isVerticalOrCropFriendly(width: number, height: number): boolean {
   const verticalRatio = 9 / 16; // 0.5625
   
   // Perfect vertical or portrait orientation
-  if (aspectRatio <= 0.75) return true;
+  if (aspectRatio <= VERTICAL_ASPECT_RATIO_THRESHOLD) return true;
   
   // Close to vertical (within 20% tolerance)
   if (Math.abs(aspectRatio - verticalRatio) / verticalRatio < 0.2) return true;
@@ -502,7 +511,7 @@ export async function downloadAssets(query: string, count: number = 8): Promise<
     console.log(`📁 Created directory: ${assetsDir}\n`);
 
     const downloadedAssets: AssetMetadata[] = [];
-    const videosNeeded = Math.ceil(count * 0.8); // Prefer 80% videos
+    const videosNeeded = Math.ceil(count * VIDEO_PREFERENCE_RATIO); // Prefer 80% videos
     const photosNeeded = count - videosNeeded;
 
     // Step 1: Search and download videos
@@ -590,8 +599,13 @@ export async function downloadAssets(query: string, count: number = 8): Promise<
           const outputPath = path.join(assetsDir, filename);
 
           try {
-            // Use portrait or large2x for best quality vertical photo
-            const photoUrl = photo.src.portrait || photo.src.large2x;
+            // Use portrait, large2x, or original as fallback for best quality vertical photo
+            const photoUrl = photo.src.portrait || photo.src.large2x || photo.src.original;
+            if (!photoUrl) {
+              console.warn(`⚠️  Skipping photo ${i + 1}: No suitable URL available`);
+              continue;
+            }
+            
             await downloadAssetWithRetry(photoUrl, outputPath);
             
             downloadedAssets.push({
