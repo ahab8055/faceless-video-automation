@@ -4,7 +4,6 @@ import { Command } from 'commander';
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import * as dotenv from 'dotenv';
-import * as cron from 'node-cron';
 
 import { generateScript, generateViralScript, loadScript } from './scripts';
 import { downloadAllAssets, downloadAssets, extractKeywords } from './downloads';
@@ -486,18 +485,17 @@ program
   });
 
 /**
- * Schedule command - Automated scheduled video generation
+ * Generate Videos command - Generate multiple videos for a specific niche
  */
 program
-  .command('schedule')
-  .description('Schedule automated video generation using cron')
-  .option('-s, --schedule <cron>', 'Cron expression (default: "0 8 * * *" - daily at 8 AM)', '0 8 * * *')
-  .option('-c, --count <number>', 'Number of videos to generate per run', '5')
-  .option('-f, --file <path>', 'Path to niches file', 'niches.txt')
-  .action(async (options: { schedule: string; count: string; file: string }) => {
+  .command('generate-videos')
+  .description('Generate multiple videos for a specific niche')
+  .argument('<niche>', 'The niche/topic for the videos (e.g., "motivational quotes")')
+  .option('-c, --count <number>', 'Number of videos to generate', '5')
+  .action(async (niche: string, options: { count: string }) => {
     try {
       console.log('═══════════════════════════════════════════════════');
-      console.log('🎬 FACELESS VIDEO AUTOMATION - SCHEDULER');
+      console.log('🎬 FACELESS VIDEO AUTOMATION - GENERATE VIDEOS');
       console.log('═══════════════════════════════════════════════════\n');
 
       // Check environment variables
@@ -516,23 +514,6 @@ program
         process.exit(1);
       }
 
-      // Validate cron expression
-      if (!cron.validate(options.schedule)) {
-        console.error(`❌ Error: Invalid cron expression: "${options.schedule}"`);
-        console.log('\nCron expression format: * * * * *');
-        console.log('                        │ │ │ │ │');
-        console.log('                        │ │ │ │ └─── Day of week (0-7)');
-        console.log('                        │ │ │ └───── Month (1-12)');
-        console.log('                        │ │ └─────── Day of month (1-31)');
-        console.log('                        │ └───────── Hour (0-23)');
-        console.log('                        └─────────── Minute (0-59)');
-        console.log('\nExamples:');
-        console.log('  "0 8 * * *"   - Every day at 8:00 AM');
-        console.log('  "0 */6 * * *" - Every 6 hours');
-        console.log('  "0 9 * * 1"   - Every Monday at 9:00 AM\n');
-        process.exit(1);
-      }
-
       // Parse count
       const count = parseInt(options.count, 10);
       if (isNaN(count) || count < 1 || count > 50) {
@@ -540,96 +521,76 @@ program
         process.exit(1);
       }
 
-      // Check niches file
-      const filePath = path.isAbsolute(options.file) 
-        ? options.file 
-        : path.join(process.cwd(), options.file);
+      console.log(`📋 Generating ${count} video(s) for niche: ${niche}\n`);
 
-      if (!await fs.pathExists(filePath)) {
-        console.error(`❌ Error: Niches file not found: ${filePath}`);
-        console.log('   Create a niches.txt file with one niche per line.\n');
-        process.exit(1);
-      }
+      const results: {
+        successful: Array<{ index: number; videoPath: string; caption: string }>;
+        failed: Array<{ index: number; error: string }>;
+      } = {
+        successful: [],
+        failed: []
+      };
 
-      console.log('⚙️  Schedule Configuration:');
-      console.log(`   Cron: ${options.schedule}`);
-      console.log(`   Videos per run: ${count}`);
-      console.log(`   Niches file: ${filePath}`);
-      console.log('\n🚀 Scheduler started! Press Ctrl+C to stop.\n');
-
-      // Schedule the task
-      cron.schedule(options.schedule, async () => {
-        const timestamp = new Date().toISOString();
+      // Generate multiple videos for the same niche
+      for (let i = 0; i < count; i++) {
         console.log(`\n${'═'.repeat(51)}`);
-        console.log(`🕒 SCHEDULED RUN: ${timestamp}`);
+        console.log(`📹 GENERATING VIDEO ${i + 1}/${count}`);
         console.log(`${'═'.repeat(51)}\n`);
 
         try {
-          // Read niches from file
-          const fileContent = await fs.readFile(filePath, 'utf-8');
-          const allNiches = fileContent
-            .split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0 && !line.startsWith('#'));
+          const result = await runBatchPipeline(niche);
+          results.successful.push({ 
+            index: i + 1,
+            videoPath: result.videoPath,
+            caption: result.caption
+          });
+          console.log(`✅ Completed video ${i + 1}/${count}`);
 
-          if (allNiches.length === 0) {
-            console.error('❌ Error: No niches found in file');
-            return;
+          // Add delay between batches to respect rate limits
+          if (i < count - 1) {
+            console.log('\n⏳ Waiting 5 seconds before next video...');
+            await new Promise(resolve => setTimeout(resolve, 5000));
           }
-
-          // Randomly select 'count' niches
-          const selectedNiches: string[] = [];
-          const availableNiches = [...allNiches];
-          
-          for (let i = 0; i < Math.min(count, allNiches.length); i++) {
-            const randomIndex = Math.floor(Math.random() * availableNiches.length);
-            selectedNiches.push(availableNiches[randomIndex]);
-            availableNiches.splice(randomIndex, 1);
-          }
-
-          console.log(`📋 Selected niches: ${selectedNiches.join(', ')}\n`);
-
-          // Process each selected niche
-          for (let i = 0; i < selectedNiches.length; i++) {
-            const niche = selectedNiches[i];
-            console.log(`\n📹 Processing ${i + 1}/${selectedNiches.length}: ${niche}`);
-
-            try {
-              const result = await runBatchPipeline(niche);
-              console.log(`✅ Completed: ${niche}`);
-              console.log(`   Video: ${result.videoPath}`);
-
-              // Add delay between batches
-              if (i < selectedNiches.length - 1) {
-                console.log('\n⏳ Waiting 5 seconds before next batch...');
-                await new Promise(resolve => setTimeout(resolve, 5000));
-              }
-            } catch (error) {
-              console.error(`❌ Failed: ${niche} - ${(error as Error).message}`);
-              
-              // Continue to next niche
-              if (i < selectedNiches.length - 1) {
-                console.log('\n⏳ Waiting 5 seconds before next batch...');
-                await new Promise(resolve => setTimeout(resolve, 5000));
-              }
-            }
-          }
-
-          console.log('\n✅ Scheduled run completed!\n');
 
         } catch (error) {
-          console.error('❌ Scheduled run failed:', (error as Error).message);
+          results.failed.push({ index: i + 1, error: (error as Error).message });
+          console.error(`❌ Failed video ${i + 1}/${count}: ${(error as Error).message}`);
+          
+          // Continue to next video even on failure
+          if (i < count - 1) {
+            console.log('\n⏳ Waiting 5 seconds before next video...');
+            await new Promise(resolve => setTimeout(resolve, 5000));
+          }
         }
-      });
+      }
 
-      // Keep the process running
-      process.on('SIGINT', () => {
-        console.log('\n\n🛑 Scheduler stopped by user.\n');
-        process.exit(0);
-      });
+      // Print summary report
+      console.log('\n═══════════════════════════════════════════════════');
+      console.log('📊 GENERATION SUMMARY');
+      console.log('═══════════════════════════════════════════════════\n');
+      console.log(`✅ Successful: ${results.successful.length}/${count}`);
+      
+      if (results.successful.length > 0) {
+        console.log('\n✅ Successful videos:');
+        results.successful.forEach(({ index, videoPath, caption }) => {
+          console.log(`\n   📹 Video ${index}`);
+          console.log(`      Path: ${videoPath}`);
+          console.log(`      Caption: ${caption}`);
+        });
+      }
+
+      if (results.failed.length > 0) {
+        console.log(`\n\n❌ Failed: ${results.failed.length}/${count}`);
+        console.log('\nFailed videos:');
+        results.failed.forEach(({ index, error }) => {
+          console.log(`   ✗ Video ${index}: ${error}`);
+        });
+      }
+
+      console.log('\n═══════════════════════════════════════════════════\n');
 
     } catch (error) {
-      console.error('\n❌ Schedule setup failed:', (error as Error).message);
+      console.error('\n❌ Video generation failed:', (error as Error).message);
       process.exit(1);
     }
   });
