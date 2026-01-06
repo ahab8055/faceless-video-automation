@@ -14,6 +14,7 @@
     "watch": "tsc --watch",
     "generate": "node dist/index.js generate",
     "run": "node dist/index.js run",
+    "download": "node dist/index.js download",
     "batch": "node dist/index.js batch"
   },
   "keywords": [
