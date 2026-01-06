@@ -155,8 +155,18 @@ export interface BatchCommandOptions {
   output?: string;
 }
 
+// createShort function parameters
+export interface CreateShortParams {
+  script: string;
+  caption: string;
+  hashtags: string;
+  assetPaths: string[];
+  outputPath: string;
+}
+
 // Environment variables
 export interface EnvironmentVariables {
   GOOGLE_API_KEY: string;
   PEXELS_API_KEY: string;
+  MISTRAL_API_KEY: string;
 }

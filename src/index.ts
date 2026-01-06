@@ -7,7 +7,7 @@ import * as dotenv from 'dotenv';
 
 import { generateScript, generateViralScript, loadScript } from './scripts';
 import { downloadAllAssets, downloadAssets } from './downloads';
-import { createVideo, checkFFmpeg } from './editor';
+import { createVideo, checkFFmpeg, createShort } from './editor';
 
 dotenv.config();
 
@@ -299,6 +299,98 @@ program
 
     } catch (error) {
       console.error('\n❌ Batch processing failed:', (error as Error).message);
+      process.exit(1);
+    }
+  });
+
+/**
+ * Edit command - Create video from assets folder and script file
+ */
+program
+  .command('edit')
+  .description('Create a video from assets folder and script file')
+  .argument('<assetsFolder>', 'Path to folder containing video/image assets')
+  .argument('<scriptFile>', 'Path to text file containing the script')
+  .action(async (assetsFolder: string, scriptFile: string) => {
+    try {
+      console.log('═══════════════════════════════════════════════════');
+      console.log('🎬 FACELESS VIDEO AUTOMATION - EDIT VIDEO');
+      console.log('═══════════════════════════════════════════════════\n');
+
+      // Check FFmpeg
+      const ffmpegAvailable = await checkFFmpeg();
+      if (!ffmpegAvailable) {
+        console.error('   Please install FFmpeg to continue.\n');
+        process.exit(1);
+      }
+
+      // Check if assets folder exists
+      if (!await fs.pathExists(assetsFolder)) {
+        console.error(`❌ Error: Assets folder not found: ${assetsFolder}`);
+        process.exit(1);
+      }
+
+      // Check if script file exists
+      if (!await fs.pathExists(scriptFile)) {
+        console.error(`❌ Error: Script file not found: ${scriptFile}`);
+        process.exit(1);
+      }
+
+      // Read script from file
+      console.log(`📖 Reading script from: ${scriptFile}`);
+      const script = await fs.readFile(scriptFile, 'utf-8');
+      
+      if (!script || script.trim().length === 0) {
+        console.error('❌ Error: Script file is empty');
+        process.exit(1);
+      }
+
+      console.log(`   Script length: ${script.length} characters\n`);
+
+      // Get all video and image files from assets folder
+      console.log(`📁 Reading assets from: ${assetsFolder}`);
+      const files = await fs.readdir(assetsFolder);
+      const assetPaths = files
+        .filter(f => {
+          const ext = path.extname(f).toLowerCase();
+          return ['.mp4', '.mov', '.avi', '.jpg', '.jpeg', '.png', '.webp'].includes(ext);
+        })
+        .map(f => path.join(assetsFolder, f));
+
+      if (assetPaths.length === 0) {
+        console.error('❌ Error: No video or image assets found in folder');
+        console.log('   Supported formats: .mp4, .mov, .avi, .jpg, .jpeg, .png, .webp\n');
+        process.exit(1);
+      }
+
+      console.log(`   Found ${assetPaths.length} asset(s):`);
+      assetPaths.forEach((p, i) => {
+        console.log(`   ${i + 1}. ${path.basename(p)}`);
+      });
+      console.log('');
+
+      // Use default caption and hashtags for testing
+      const timestamp = Date.now();
+      const caption = '🎥 Amazing content created with faceless video automation!';
+      const hashtags = '#shorts #viral #trending #faceless #automation #contentcreation #ai #video #socialmedia #youtube';
+      const outputPath = path.join(process.cwd(), 'output', `test_${timestamp}`);
+
+      // Create the short video
+      const videoPath = await createShort({
+        script,
+        caption,
+        hashtags,
+        assetPaths,
+        outputPath
+      });
+
+      console.log('═══════════════════════════════════════════════════');
+      console.log('✅ SUCCESS! Video created:');
+      console.log(`   ${videoPath}`);
+      console.log('═══════════════════════════════════════════════════\n');
+
+    } catch (error) {
+      console.error('\n❌ Video editing failed:', (error as Error).message);
       process.exit(1);
     }
   });
