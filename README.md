@@ -70,9 +70,35 @@ PEXELS_API_KEY=your_pexels_api_key_here
 1. Visit [Pexels API](https://www.pexels.com/api/)
 2. Sign up for a free account
 3. Navigate to your API section
+4. Copy your API key and paste into your `.env` file
+
+## Usage
+
+### Generate Script Only
+Generate a video script without downloading assets:
+```bash
 pnpm start generate [niche]
 # Example: pnpm start generate "motivational quotes"
 ```
+
+### Download Assets
+Download video/photo assets from Pexels for any search query:
+```bash
+pnpm start download [query]
+# Example: pnpm start download "ocean waves sunset"
+
+# With custom count (default is 8)
+pnpm start download "nature landscape" --count 5
+```
+
+**Features:**
+- 🔍 **Smart Search**: Automatically extracts keywords from long text
+- 🎥 **Video Priority**: Searches for videos first (15-30 seconds preferred)
+- 📷 **Photo Fallback**: Downloads photos if videos are insufficient
+- 📱 **Vertical Format**: Prefers 9:16 aspect ratio for short-form content
+- 🔄 **Retry Logic**: Automatically retries failed downloads
+- ⏱️ **Rate Limiting**: Built-in delays to respect API limits
+- 📁 **Organized Storage**: Creates timestamped folders with metadata
 
 ### Run Single Video
 Process and create a complete video for a niche:
@@ -85,14 +111,13 @@ pnpm start run [niche]
 Create multiple videos at once:
 ```bash
 pnpm start batch [niche1,niche2,...]
-# Example: pnpm start run "tech tips"
+# Example: pnpm start batch "fitness,cooking,travel"
 ```
 
-### Batch Process
-Create multiple videos at once:
-```bash
-npm start batch [niche1,niche2,...]
-# Exsrc/                 # TypeScript source files
+## Project Structure
+
+```
+src/                 # TypeScript source files
 │   ├── index.ts         # Main CLI entry point
 │   ├── scripts.ts       # Script generation module
 │   ├── downloads.ts     # Asset download module
@@ -113,6 +138,8 @@ npm start batch [niche1,niche2,...]
 ### src/types.ts
 TypeScript type definitions:
 - Script, Assets, and API response interfaces
+- Pexels video and photo types
+- Asset metadata and download result types
 - FFmpeg metadata and progress types
 - Command options types
 
@@ -124,7 +151,11 @@ Handles AI-powered script generation using Mistral AI:
 
 ### src/downloads.ts
 Manages media asset downloads: 
-- Search and download Pexels videos
+- Search and download Pexels videos/photos with `downloadAssets()`
+- Intelligent keyword extraction from script text
+- Video priority with photo fallback strategy
+- Vertical format filtering (9:16 aspect ratio)
+- Retry logic and rate limiting
 - Download images for thumbnails
 - Generate TTS audio from scripts
 

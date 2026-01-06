@@ -61,6 +61,61 @@ export interface PexelsSearchResponse {
   videos: PexelsVideo[];
 }
 
+// Pexels Photo API types
+export interface PexelsPhoto {
+  id: number;
+  width: number;
+  height: number;
+  url: string;
+  photographer: string;
+  photographer_url: string;
+  photographer_id: number;
+  avg_color: string;
+  src: PexelsPhotoSource;
+  liked: boolean;
+  alt: string;
+}
+
+export interface PexelsPhotoSource {
+  original: string;
+  large2x: string;
+  large: string;
+  medium: string;
+  small: string;
+  portrait: string;
+  landscape: string;
+  tiny: string;
+}
+
+export interface PexelsPhotoSearchResponse {
+  page: number;
+  per_page: number;
+  total_results: number;
+  photos: PexelsPhoto[];
+}
+
+// Asset metadata returned by downloadAssets
+export interface AssetMetadata {
+  id: number | string;
+  type: 'video' | 'photo';
+  path: string;
+  url: string;
+  width: number;
+  height: number;
+  aspectRatio: number;
+  duration?: number; // Only for videos
+  relevance?: number; // Relevance score
+}
+
+// Return type for downloadAssets function
+export interface DownloadAssetsResult {
+  assets: AssetMetadata[];
+  timestamp: string;
+  directory: string;
+  query: string;
+  extractedKeywords?: string[];
+}
+
 // FFmpeg types
 export interface FFmpegMetadata {
   format?: {
