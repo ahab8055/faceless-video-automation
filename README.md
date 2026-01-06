@@ -52,9 +52,17 @@ cp .env.example .env
 - `pnpm start` - Run the compiled CLI
 - `pnpm dev` - Run TypeScript directly with ts-node (for development)
 - `pnpm watch` - Watch mode for development
-4. Edit `.env` and add your API keys:
+- `pnpm generate` - Generate AI-powered video scripts
+- `pnpm run` - Create complete videos from script generation to final output
+- `pnpm download` - Download assets from Pexels
+- `pnpm edit` - Create videos from your own assets and script files
+- `pnpm batch` - Batch process multiple video niches
+
+## Setup Environment Variables
+
+Edit `.env` and add your API keys:
 ```
-GOOGLE_API_KEY=your_gemini_api_key_here
+MISTRAL_API_KEY=your_mistral_api_key_here
 PEXELS_API_KEY=your_pexels_api_key_here
 ```
 
@@ -99,6 +107,27 @@ pnpm start download "nature landscape" --count 5
 - 🔄 **Retry Logic**: Automatically retries failed downloads
 - ⏱️ **Rate Limiting**: Built-in delays to respect API limits
 - 📁 **Organized Storage**: Creates timestamped folders with metadata
+
+### Edit Video from Assets
+Create a video from your own assets and script:
+```bash
+pnpm start edit [assetsFolder] [scriptFile]
+# Example: pnpm start edit ./my-videos ./script.txt
+```
+
+**Features:**
+- 🎬 **Custom Assets**: Use your own video clips and images
+- 🗣️ **Text-to-Speech**: Generates narration from your script
+- 🎵 **Background Music**: Auto-downloads or uses music from `music/` folder
+- 📝 **Text Overlays**: Animated text with intro, script sentences, and outro
+- 🎨 **Auto-Formatting**: Converts all assets to 1080x1920 vertical format
+- 🔊 **Audio Mixing**: TTS at full volume, background music at -15dB
+- 💾 **Complete Output**: Video, caption.txt, and hashtags.txt files
+
+**Requirements:**
+- Assets folder with `.mp4`, `.mov`, `.avi`, `.jpg`, `.jpeg`, `.png`, or `.webp` files
+- Text file with your script (automatically split into sentences for overlays)
+- Optional: Place `.mp3` files in `music/` folder for custom background music
 
 ### Run Single Video
 Process and create a complete video for a niche:
@@ -156,10 +185,46 @@ Manages media asset downloads:
 - Video priority with photo fallback strategy
 - Vertical format filtering (9:16 aspect ratio)
 - Retry logic and rate limiting
-- Download images for thumbnails
 - Generate TTS audio from scripts
 
-### src/editor.t
+### src/editor.ts
+Video editing and assembly:
+- `createShort()`: Comprehensive video creation function
+  - Generates TTS narration from script text (handles long text with chunking)
+  - Downloads/uses background music (Pixabay URLs or user `music/` folder)
+  - Processes assets to 1080x1920 vertical format
+  - Concatenates and loops videos to match audio duration
+  - Adds animated text overlays (intro, script sentences, outro)
+  - Mixes audio tracks (TTS + background music at -15dB)
+  - Outputs video, caption, and hashtags files
+  - **Example usage:**
+    ```typescript
+    import { createShort } from './src/editor';
+    
+    await createShort({
+      script: "Your amazing script here. Multiple sentences supported.",
+      caption: "🎥 Your caption here!",
+      hashtags: "#viral #trending #shorts",
+      assetPaths: ["assets/clip1.mp4", "assets/image.jpg"],
+      outputPath: "output/myvideo"
+    });
+    ```
+  - **CLI usage:**
+    ```bash
+    # Using npm script
+    npm run edit assets/my-folder script.txt
+    
+    # Using pnpm
+    pnpm edit assets/my-folder script.txt
+    
+    # Direct execution
+    node dist/index.js edit assets/my-folder script.txt
+    ```
+- `createVideo()`: Legacy video creation from assets
+- `scaleAndCropVideo()`: Format conversion utilities
+- `concatenateVideos()`: Video concatenation
+- `mergeVideoWithAudio()`: Audio merging
+
 ### downloads.js
 Manages media asset downloads: 
 - Search and download Pexels videos
