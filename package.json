@@ -16,7 +16,10 @@
     "video": "node dist/index.js run",
     "download": "node dist/index.js download",
     "edit": "node dist/index.js edit",
-    "batch": "node dist/index.js batch"
+    "batch": "node dist/index.js batch",
+    "batch-multi": "node dist/index.js batch-multi",
+    "schedule": "node dist/index.js schedule",
+    "cleanup": "node dist/index.js cleanup"
   },
   "keywords": [
     "video",
@@ -35,12 +38,14 @@
     "dotenv": "^17.2.3",
     "fluent-ffmpeg": "^2.1.3",
     "fs-extra": "^11.3.3",
-    "google-tts-api": "^2.0.2"
+    "google-tts-api": "^2.0.2",
+    "node-cron": "^3.0.3"
   },
   "devDependencies": {
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^25.0.3",
+    "@types/node-cron": "^3.0.11",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
