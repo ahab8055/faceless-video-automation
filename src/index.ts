@@ -6,13 +6,120 @@ import * as fs from 'fs-extra';
 import * as dotenv from 'dotenv';
 
 import { generateScript, generateViralScript, loadScript } from './scripts';
-import { downloadAllAssets, downloadAssets } from './downloads';
+import { downloadAllAssets, downloadAssets, extractKeywords } from './downloads';
 import { createVideo, checkFFmpeg, createShort } from './editor';
 
 dotenv.config();
 
 // Constants
 const VERTICAL_ASPECT_RATIO_THRESHOLD = 0.75; // Aspect ratio threshold for vertical format
+
+/**
+ * Helper Functions
+ */
+
+/**
+ * Execute the complete batch pipeline for a single niche
+ * @param niche - The niche/topic for the video
+ * @returns Object with video path and metadata
+ */
+async function runBatchPipeline(niche: string): Promise<{ videoPath: string; caption: string; hashtags: string }> {
+  try {
+    console.log(`\n${'═'.repeat(51)}`);
+    console.log(`🎬 PROCESSING: ${niche}`);
+    console.log(`${'═'.repeat(51)}\n`);
+
+    // Step 1: Generate viral script
+    console.log('📝 Step 1/4: Generating viral script...');
+    const viralScript = await generateViralScript(niche);
+
+    // Step 2: Extract keywords from script
+    console.log('🔑 Step 2/4: Extracting keywords...');
+    const keywords = extractKeywords(viralScript.script);
+    console.log(`   Keywords: ${keywords.join(', ')}`);
+
+    // Step 3: Download assets using keywords
+    console.log('📦 Step 3/4: Downloading assets...');
+    const searchQuery = keywords.slice(0, 3).join(' ');
+    const downloadResult = await downloadAssets(searchQuery, 8);
+
+    // Step 4: Create unique timestamped folder in output/
+    const timestamp = Date.now();
+    const outputFolder = path.join(process.cwd(), 'output', `${niche.replace(/\s+/g, '-')}_${timestamp}`);
+    await fs.ensureDir(outputFolder);
+
+    // Step 5: Create the short video
+    console.log('🎥 Step 4/4: Creating short video...');
+    const assetPaths = downloadResult.assets.map(a => a.path);
+    const videoPath = await createShort({
+      script: viralScript.script,
+      caption: viralScript.caption,
+      hashtags: viralScript.hashtags,
+      assetPaths,
+      outputPath: outputFolder
+    });
+
+    return {
+      videoPath,
+      caption: viralScript.caption,
+      hashtags: viralScript.hashtags
+    };
+
+  } catch (error) {
+    console.error(`❌ Error in batch pipeline for ${niche}:`, (error as Error).message);
+    throw error;
+  }
+}
+
+/**
+ * Recursively calculate the size of a folder in bytes
+ * @param folderPath - Path to the folder
+ * @returns Size in bytes
+ */
+async function getFolderSize(folderPath: string): Promise<number> {
+  let totalSize = 0;
+
+  try {
+    const stats = await fs.stat(folderPath);
+    
+    if (!stats.isDirectory()) {
+      return stats.size;
+    }
+
+    const files = await fs.readdir(folderPath);
+    
+    for (const file of files) {
+      const filePath = path.join(folderPath, file);
+      const fileStats = await fs.stat(filePath);
+      
+      if (fileStats.isDirectory()) {
+        totalSize += await getFolderSize(filePath);
+      } else {
+        totalSize += fileStats.size;
+      }
+    }
+
+    return totalSize;
+  } catch (error) {
+    console.error(`Error calculating folder size: ${(error as Error).message}`);
+    return 0;
+  }
+}
+
+/**
+ * Format bytes to human-readable string
+ * @param bytes - Number of bytes
+ * @returns Formatted string (KB, MB, GB)
+ */
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+}
 
 const program = new Command();
 
@@ -195,25 +302,17 @@ program
   });
 
 /**
- * Batch command - Process multiple niches
+ * Batch command - Main pipeline for single niche
  */
 program
   .command('batch')
-  .description('Batch process multiple niches and create videos')
-  .argument('<niches>', 'Comma-separated list of niches (e.g., "fitness,cooking,travel")')
-  .action(async (nichesArg: string) => {
+  .description('Process a single niche through the complete video generation pipeline')
+  .argument('<niche>', 'The niche/topic for the video (e.g., "motivational quotes")')
+  .action(async (niche: string) => {
     try {
-      const niches = nichesArg.split(',').map(n => n.trim()).filter(n => n.length > 0);
-
-      if (niches.length === 0) {
-        console.error('❌ Error: No niches provided');
-        process.exit(1);
-      }
-
       console.log('═══════════════════════════════════════════════════');
-      console.log('🎬 FACELESS VIDEO AUTOMATION - BATCH PROCESSING');
+      console.log('🎬 FACELESS VIDEO AUTOMATION - BATCH PIPELINE');
       console.log('═══════════════════════════════════════════════════\n');
-      console.log(`📋 Processing ${niches.length} niche(s): ${niches.join(', ')}\n`);
 
       // Check environment variables
       if (!process.env.MISTRAL_API_KEY || !process.env.PEXELS_API_KEY) {
@@ -231,15 +330,96 @@ program
         process.exit(1);
       }
 
+      // Run the batch pipeline
+      const result = await runBatchPipeline(niche);
+
+      // Log output in the specified format
+      console.log('\n═══════════════════════════════════════════════════');
+      console.log('✅ SUCCESS!');
+      console.log('═══════════════════════════════════════════════════');
+      console.log(`Video ready: ${result.videoPath}`);
+      console.log(`Caption: ${result.caption}`);
+      console.log('═══════════════════════════════════════════════════\n');
+
+    } catch (error) {
+      console.error('\n❌ Batch pipeline failed:', (error as Error).message);
+      process.exit(1);
+    }
+  });
+
+/**
+ * Batch-multi command - Process multiple niches
+ */
+program
+  .command('batch-multi')
+  .description('Batch process multiple niches and create videos')
+  .argument('[niches]', 'Comma-separated list of niches (e.g., "fitness,cooking,travel")')
+  .option('-f, --file <path>', 'Path to niches file (one niche per line, # for comments)', 'niches.txt')
+  .action(async (nichesArg: string | undefined, options: { file: string }) => {
+    try {
+      console.log('═══════════════════════════════════════════════════');
+      console.log('🎬 FACELESS VIDEO AUTOMATION - BATCH MULTI');
+      console.log('═══════════════════════════════════════════════════\n');
+
+      // Check environment variables
+      if (!process.env.MISTRAL_API_KEY || !process.env.PEXELS_API_KEY) {
+        console.error('❌ Error: Required API keys not found in .env file');
+        console.log('   Required: MISTRAL_API_KEY, PEXELS_API_KEY');
+        console.log('   Please create a .env file with your API keys.');
+        console.log('   See .env.example for reference.\n');
+        process.exit(1);
+      }
+
+      // Check FFmpeg
+      const ffmpegAvailable = await checkFFmpeg();
+      if (!ffmpegAvailable) {
+        console.error('   Please install FFmpeg to continue.\n');
+        process.exit(1);
+      }
+
+      let niches: string[] = [];
+
+      // Load niches from command argument or file
+      if (nichesArg) {
+        niches = nichesArg.split(',').map(n => n.trim()).filter(n => n.length > 0);
+      } else {
+        // Read from file
+        const filePath = path.isAbsolute(options.file) 
+          ? options.file 
+          : path.join(process.cwd(), options.file);
+
+        if (!await fs.pathExists(filePath)) {
+          console.error(`❌ Error: Niches file not found: ${filePath}`);
+          console.log('   Create a niches.txt file with one niche per line.');
+          console.log('   Lines starting with # are treated as comments.\n');
+          process.exit(1);
+        }
+
+        const fileContent = await fs.readFile(filePath, 'utf-8');
+        niches = fileContent
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => line.length > 0 && !line.startsWith('#'));
+      }
+
+      if (niches.length === 0) {
+        console.error('❌ Error: No niches provided');
+        console.log('   Provide niches as: batch-multi "niche1,niche2"');
+        console.log('   Or use -f flag: batch-multi -f niches.txt\n');
+        process.exit(1);
+      }
+
+      console.log(`📋 Processing ${niches.length} niche(s): ${niches.join(', ')}\n`);
+
       const results: {
-        successful: Array<{ niche: string; videoPath: string }>;
+        successful: Array<{ niche: string; videoPath: string; caption: string }>;
         failed: Array<{ niche: string; error: string }>;
       } = {
         successful: [],
         failed: []
       };
 
-      // Process each niche
+      // Process each niche sequentially
       for (let i = 0; i < niches.length; i++) {
         const niche = niches[i];
         console.log(`\n${'═'.repeat(51)}`);
@@ -247,19 +427,12 @@ program
         console.log(`${'═'.repeat(51)}\n`);
 
         try {
-          // Generate script
-          console.log('📝 Generating script...');
-          const script = await generateScript(niche);
-
-          // Download assets
-          console.log('📦 Downloading assets...');
-          const assets = await downloadAllAssets(script, niche);
-
-          // Create video
-          console.log('🎥 Creating video...');
-          const videoPath = await createVideo(assets, niche);
-
-          results.successful.push({ niche, videoPath });
+          const result = await runBatchPipeline(niche);
+          results.successful.push({ 
+            niche, 
+            videoPath: result.videoPath,
+            caption: result.caption
+          });
           console.log(`✅ Completed: ${niche}`);
 
           // Add delay between batches to respect rate limits
@@ -271,24 +444,32 @@ program
         } catch (error) {
           results.failed.push({ niche, error: (error as Error).message });
           console.error(`❌ Failed: ${niche} - ${(error as Error).message}`);
+          
+          // Continue to next niche even on failure
+          if (i < niches.length - 1) {
+            console.log('\n⏳ Waiting 5 seconds before next batch...');
+            await new Promise(resolve => setTimeout(resolve, 5000));
+          }
         }
       }
 
-      // Print summary
+      // Print summary report
       console.log('\n═══════════════════════════════════════════════════');
       console.log('📊 BATCH PROCESSING SUMMARY');
       console.log('═══════════════════════════════════════════════════\n');
       console.log(`✅ Successful: ${results.successful.length}/${niches.length}`);
       
       if (results.successful.length > 0) {
-        console.log('\nSuccessful videos:');
-        results.successful.forEach(({ niche, videoPath }) => {
-          console.log(`   ✓ ${niche}: ${videoPath}`);
+        console.log('\n✅ Successful videos:');
+        results.successful.forEach(({ niche, videoPath, caption }) => {
+          console.log(`\n   📹 ${niche}`);
+          console.log(`      Video: ${videoPath}`);
+          console.log(`      Caption: ${caption}`);
         });
       }
 
       if (results.failed.length > 0) {
-        console.log(`\n❌ Failed: ${results.failed.length}/${niches.length}`);
+        console.log(`\n\n❌ Failed: ${results.failed.length}/${niches.length}`);
         console.log('\nFailed niches:');
         results.failed.forEach(({ niche, error }) => {
           console.log(`   ✗ ${niche}: ${error}`);
@@ -298,7 +479,224 @@ program
       console.log('\n═══════════════════════════════════════════════════\n');
 
     } catch (error) {
-      console.error('\n❌ Batch processing failed:', (error as Error).message);
+      console.error('\n❌ Batch-multi processing failed:', (error as Error).message);
+      process.exit(1);
+    }
+  });
+
+/**
+ * Generate Videos command - Generate multiple videos for a specific niche
+ */
+program
+  .command('generate-videos')
+  .description('Generate multiple videos for a specific niche')
+  .argument('<niche>', 'The niche/topic for the videos (e.g., "motivational quotes")')
+  .option('-c, --count <number>', 'Number of videos to generate', '5')
+  .action(async (niche: string, options: { count: string }) => {
+    try {
+      console.log('═══════════════════════════════════════════════════');
+      console.log('🎬 FACELESS VIDEO AUTOMATION - GENERATE VIDEOS');
+      console.log('═══════════════════════════════════════════════════\n');
+
+      // Check environment variables
+      if (!process.env.MISTRAL_API_KEY || !process.env.PEXELS_API_KEY) {
+        console.error('❌ Error: Required API keys not found in .env file');
+        console.log('   Required: MISTRAL_API_KEY, PEXELS_API_KEY');
+        console.log('   Please create a .env file with your API keys.');
+        console.log('   See .env.example for reference.\n');
+        process.exit(1);
+      }
+
+      // Check FFmpeg
+      const ffmpegAvailable = await checkFFmpeg();
+      if (!ffmpegAvailable) {
+        console.error('   Please install FFmpeg to continue.\n');
+        process.exit(1);
+      }
+
+      // Parse count
+      const count = parseInt(options.count, 10);
+      if (isNaN(count) || count < 1 || count > 50) {
+        console.error('❌ Error: Count must be a number between 1 and 50');
+        process.exit(1);
+      }
+
+      console.log(`📋 Generating ${count} video(s) for niche: ${niche}\n`);
+
+      const results: {
+        successful: Array<{ index: number; videoPath: string; caption: string }>;
+        failed: Array<{ index: number; error: string }>;
+      } = {
+        successful: [],
+        failed: []
+      };
+
+      // Generate multiple videos for the same niche
+      for (let i = 0; i < count; i++) {
+        console.log(`\n${'═'.repeat(51)}`);
+        console.log(`📹 GENERATING VIDEO ${i + 1}/${count}`);
+        console.log(`${'═'.repeat(51)}\n`);
+
+        try {
+          const result = await runBatchPipeline(niche);
+          results.successful.push({ 
+            index: i + 1,
+            videoPath: result.videoPath,
+            caption: result.caption
+          });
+          console.log(`✅ Completed video ${i + 1}/${count}`);
+
+          // Add delay between batches to respect rate limits
+          if (i < count - 1) {
+            console.log('\n⏳ Waiting 5 seconds before next video...');
+            await new Promise(resolve => setTimeout(resolve, 5000));
+          }
+
+        } catch (error) {
+          results.failed.push({ index: i + 1, error: (error as Error).message });
+          console.error(`❌ Failed video ${i + 1}/${count}: ${(error as Error).message}`);
+          
+          // Continue to next video even on failure
+          if (i < count - 1) {
+            console.log('\n⏳ Waiting 5 seconds before next video...');
+            await new Promise(resolve => setTimeout(resolve, 5000));
+          }
+        }
+      }
+
+      // Print summary report
+      console.log('\n═══════════════════════════════════════════════════');
+      console.log('📊 GENERATION SUMMARY');
+      console.log('═══════════════════════════════════════════════════\n');
+      console.log(`✅ Successful: ${results.successful.length}/${count}`);
+      
+      if (results.successful.length > 0) {
+        console.log('\n✅ Successful videos:');
+        results.successful.forEach(({ index, videoPath, caption }) => {
+          console.log(`\n   📹 Video ${index}`);
+          console.log(`      Path: ${videoPath}`);
+          console.log(`      Caption: ${caption}`);
+        });
+      }
+
+      if (results.failed.length > 0) {
+        console.log(`\n\n❌ Failed: ${results.failed.length}/${count}`);
+        console.log('\nFailed videos:');
+        results.failed.forEach(({ index, error }) => {
+          console.log(`   ✗ Video ${index}: ${error}`);
+        });
+      }
+
+      console.log('\n═══════════════════════════════════════════════════\n');
+
+    } catch (error) {
+      console.error('\n❌ Video generation failed:', (error as Error).message);
+      process.exit(1);
+    }
+  });
+
+/**
+ * Cleanup command - Remove old assets and temporary files
+ */
+program
+  .command('cleanup')
+  .description('Clean up old assets and temporary files')
+  .option('-d, --days <number>', 'Remove assets older than specified days', '7')
+  .option('--dry-run', 'Preview what would be deleted without actually deleting', false)
+  .action(async (options: { days: string; dryRun: boolean }) => {
+    try {
+      console.log('═══════════════════════════════════════════════════');
+      console.log('🎬 FACELESS VIDEO AUTOMATION - CLEANUP');
+      console.log('═══════════════════════════════════════════════════\n');
+
+      // Parse days
+      const days = parseInt(options.days, 10);
+      if (isNaN(days) || days < 0) {
+        console.error('❌ Error: Days must be a non-negative number');
+        process.exit(1);
+      }
+
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      const cutoffTime = cutoffDate.getTime();
+
+      console.log(`🧹 Cleanup Configuration:`);
+      console.log(`   Remove files older than: ${days} days (before ${cutoffDate.toISOString()})`);
+      console.log(`   Mode: ${options.dryRun ? 'DRY RUN (preview only)' : 'DELETE'}\n`);
+
+      let totalFoldersRemoved = 0;
+      let totalSpaceFreed = 0;
+
+      // Clean assets/ directory (timestamped folders)
+      const assetsDir = path.join(process.cwd(), 'assets');
+      if (await fs.pathExists(assetsDir)) {
+        console.log('📁 Scanning assets/ directory...\n');
+        const assetEntries = await fs.readdir(assetsDir);
+
+        for (const entry of assetEntries) {
+          const entryPath = path.join(assetsDir, entry);
+          const stats = await fs.stat(entryPath);
+
+          if (stats.isDirectory()) {
+            // Check if folder name is a timestamp (YYYY-MM-DD format or similar)
+            const timestampMatch = entry.match(/^\d{4}-\d{2}-\d{2}/);
+            if (timestampMatch && stats.mtime.getTime() < cutoffTime) {
+              const folderSize = await getFolderSize(entryPath);
+              totalSpaceFreed += folderSize;
+              totalFoldersRemoved++;
+
+              console.log(`   ${options.dryRun ? '🔍 Would delete' : '🗑️  Deleting'}: ${entry}`);
+              console.log(`      Size: ${formatBytes(folderSize)}`);
+              console.log(`      Modified: ${stats.mtime.toISOString()}`);
+
+              if (!options.dryRun) {
+                await fs.remove(entryPath);
+              }
+            }
+          }
+        }
+      }
+
+      // Clean output/ directory (temp- folders)
+      const outputDir = path.join(process.cwd(), 'output');
+      if (await fs.pathExists(outputDir)) {
+        console.log('\n📁 Scanning output/ directory...\n');
+        const outputEntries = await fs.readdir(outputDir);
+
+        for (const entry of outputEntries) {
+          const entryPath = path.join(outputDir, entry);
+          const stats = await fs.stat(entryPath);
+
+          if (stats.isDirectory() && entry.startsWith('temp-')) {
+            const folderSize = await getFolderSize(entryPath);
+            totalSpaceFreed += folderSize;
+            totalFoldersRemoved++;
+
+            console.log(`   ${options.dryRun ? '🔍 Would delete' : '🗑️  Deleting'}: ${entry}`);
+            console.log(`      Size: ${formatBytes(folderSize)}`);
+            console.log(`      Modified: ${stats.mtime.toISOString()}`);
+
+            if (!options.dryRun) {
+              await fs.remove(entryPath);
+            }
+          }
+        }
+      }
+
+      // Print summary
+      console.log('\n═══════════════════════════════════════════════════');
+      console.log('📊 CLEANUP SUMMARY');
+      console.log('═══════════════════════════════════════════════════');
+      console.log(`${options.dryRun ? '🔍 Would remove' : '🗑️  Removed'}: ${totalFoldersRemoved} folder(s)`);
+      console.log(`💾 Space ${options.dryRun ? 'that would be' : ''} freed: ${formatBytes(totalSpaceFreed)}`);
+      console.log('═══════════════════════════════════════════════════\n');
+
+      if (options.dryRun && totalFoldersRemoved > 0) {
+        console.log('💡 Run without --dry-run to actually delete these files.\n');
+      }
+
+    } catch (error) {
+      console.error('\n❌ Cleanup failed:', (error as Error).message);
       process.exit(1);
     }
   });

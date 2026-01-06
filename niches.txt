@@ -1,0 +1,13 @@
+# Faceless Video Niches
+# One niche per line. Lines starting with # are ignored.
+
+motivational quotes
+tech tips
+life hacks
+fitness motivation
+productivity tips
+meditation mindfulness
+cooking recipes
+travel destinations
+history facts
+science explained

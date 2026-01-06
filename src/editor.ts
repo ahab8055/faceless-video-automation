@@ -14,7 +14,8 @@ const ESTIMATED_CHARS_PER_MINUTE = 450; // Average speech rate for duration esti
 const MIN_AUDIO_DURATION = 10; // Minimum audio duration in seconds
 const MAX_AUDIO_DURATION = 45; // Maximum audio duration in seconds
 const BACKGROUND_MUSIC_VOLUME = 0.18; // ~-15dB (formula: 10^(-15/20) ≈ 0.18)
-const COMMON_VIDEO_OUTPUT_OPTIONS = ['-r 30', '-pix_fmt yuv420p', '-preset ultrafast', '-crf 28'];
+// Optimized for speed: veryfast preset, higher CRF for faster encoding
+const COMMON_VIDEO_OUTPUT_OPTIONS = ['-r 30', '-pix_fmt yuv420p', '-preset veryfast', '-crf 30'];
 
 /**
  * Get video duration in seconds

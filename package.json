@@ -16,7 +16,10 @@
     "video": "node dist/index.js run",
     "download": "node dist/index.js download",
     "edit": "node dist/index.js edit",
-    "batch": "node dist/index.js batch"
+    "batch": "node dist/index.js batch",
+    "batch-multi": "node dist/index.js batch-multi",
+    "generate-videos": "node dist/index.js generate-videos",
+    "cleanup": "node dist/index.js cleanup"
   },
   "keywords": [
     "video",
