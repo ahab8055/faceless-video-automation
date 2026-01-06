@@ -154,34 +154,103 @@ export async function generateTTS(text: string, outputPath: string): Promise<str
   try {
     console.log(`🗣️  Generating TTS audio...`);
 
-    // Get TTS audio URL from Google TTS API
-    const audioUrl = await googleTTS.getAudioUrl(text, {
-      lang: 'en',
-      slow: false,
-      host: 'https://translate.google.com',
-    });
-
-    console.log(`⬇️  Downloading TTS audio...`);
-
-    // Download the audio file
-    const response = await axios({
-      method: 'GET',
-      url: audioUrl,
-      responseType: 'stream'
-    });
-
     await fs.ensureDir(path.dirname(outputPath));
-    const writer = fs.createWriteStream(outputPath);
 
-    response.data.pipe(writer);
-
-    return new Promise<string>((resolve, reject) => {
-      writer.on('finish', () => {
-        console.log(`✅ TTS audio saved to: ${outputPath}`);
-        resolve(outputPath);
+    // For long text (>200 chars), use getAllAudioUrls which splits the text
+    if (text.length > 200) {
+      console.log(`   Text is ${text.length} characters, splitting into chunks...`);
+      
+      const audioUrls = await googleTTS.getAllAudioUrls(text, {
+        lang: 'en-US',  // US English for better male voice
+        slow: true,     // Slower speech for deeper, more authoritative voice
+        host: 'https://translate.google.com',
+        splitPunct: ',.?',
       });
-      writer.on('error', reject);
-    });
+
+      console.log(`   Generated ${audioUrls.length} audio chunk(s)`);
+
+      // Download all audio chunks
+      const tempDir = path.join(path.dirname(outputPath), 'temp_audio');
+      await fs.ensureDir(tempDir);
+      
+      const chunkPaths: string[] = [];
+      
+      for (let i = 0; i < audioUrls.length; i++) {
+        const chunkPath = path.join(tempDir, `chunk_${i}.mp3`);
+        
+        const response = await axios({
+          method: 'GET',
+          url: audioUrls[i].url,
+          responseType: 'stream'
+        });
+
+        const writer = fs.createWriteStream(chunkPath);
+        response.data.pipe(writer);
+
+        await new Promise<void>((resolve, reject) => {
+          writer.on('finish', () => resolve());
+          writer.on('error', reject);
+        });
+
+        chunkPaths.push(chunkPath);
+      }
+
+      // Concatenate audio files using ffmpeg
+      console.log(`   Concatenating ${chunkPaths.length} audio chunks...`);
+      const ffmpeg = require('fluent-ffmpeg');
+      
+      await new Promise<void>((resolve, reject) => {
+        const command = ffmpeg();
+        
+        chunkPaths.forEach(chunkPath => {
+          command.input(chunkPath);
+        });
+
+        command
+          .on('end', () => {
+            console.log(`✅ TTS audio saved to: ${outputPath}`);
+            resolve();
+          })
+          .on('error', (err: Error) => {
+            console.error('❌ Error concatenating audio chunks:', err.message);
+            reject(err);
+          })
+          .mergeToFile(outputPath, tempDir);
+      });
+
+      // Clean up temp files
+      await fs.remove(tempDir);
+
+      return outputPath;
+
+    } else {
+      // For short text (<= 200 chars), use the simple single request method
+      const audioUrl = await googleTTS.getAudioUrl(text, {
+        lang: 'en-US',  // US English for better male voice
+        slow: true,     // Slower speech for deeper, more authoritative voice
+        host: 'https://translate.google.com',
+      });
+
+      console.log(`⬇️  Downloading TTS audio...`);
+
+      // Download the audio file
+      const response = await axios({
+        method: 'GET',
+        url: audioUrl,
+        responseType: 'stream'
+      });
+
+      const writer = fs.createWriteStream(outputPath);
+      response.data.pipe(writer);
+
+      return new Promise<string>((resolve, reject) => {
+        writer.on('finish', () => {
+          console.log(`✅ TTS audio saved to: ${outputPath}`);
+          resolve(outputPath);
+        });
+        writer.on('error', reject);
+      });
+    }
 
   } catch (error) {
     console.error('❌ Error generating TTS:', (error as Error).message);
@@ -236,7 +305,8 @@ export async function downloadAllAssets(script: Script, niche: string): Promise<
 
     return {
       videos: videoFiles,
-      audio: [audioFile]
+      audio: [audioFile],
+      scriptText: script.narration || script.fullText || ''
     };
 
   } catch (error) {

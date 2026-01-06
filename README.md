@@ -10,7 +10,9 @@ A Node.js CLI tool for automated faceless short-form video generation using AI-p
 - 🤖 AI-powered script generation using Mistral AI
 - 🎥 Automatic stock footage download from Pexels
 - 🎬 Video editing and assembly with FFmpeg
-- 🗣️ Text-to-speech audio generation
+- 🗣️ Text-to-speech audio generation with male voice
+- 📝 Animated text overlays with fade transitions
+- 🎞️ Smooth video transitions with zoom effects
 - 💻 CLI interface for easy operation
 - 📦 Batch processing support
 

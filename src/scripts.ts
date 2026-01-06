@@ -32,7 +32,7 @@ export async function generateScript(niche: string): Promise<Script> {
     // Create prompt for script generation
     const prompt = `Create an engaging 60-second short-form video script about ${niche}.
 
-The script should be formatted EXACTLY as follows:
+The script should be formatted EXACTLY as follows (do NOT use asterisks, bullets, or markdown):
 
 HOOK:
 [Write a powerful 5-second hook that grabs attention immediately]
@@ -44,7 +44,7 @@ CTA:
 [Write a clear call-to-action that encourages viewers to like, comment, or follow]
 
 SEARCH_TERMS:
-[Provide 5-7 comma-separated search terms for finding relevant stock footage, e.g., "motivation, success, business, entrepreneur, lifestyle"]
+[Provide 5-7 comma-separated search terms for finding relevant stock footage. Use simple descriptive terms like: mountain sunset, office working, person running, city skyline, nature landscape]
 
 Keep the language conversational and dynamic. Make every word count for maximum impact in 60 seconds.`;
 
@@ -263,7 +263,9 @@ export function parseScript(scriptText: string): Script {
     // Extract SEARCH_TERMS section
     const searchMatch = scriptText.match(/SEARCH_TERMS:\s*\n([\s\S]*?)$/i);
     if (searchMatch) {
-      const terms = searchMatch[1].trim().split(',').map(term => term.trim()).filter(term => term.length > 0);
+      // Remove asterisks and other markdown formatting
+      const termsText = searchMatch[1].trim().replace(/\*/g, '').replace(/\n/g, ' ');
+      const terms = termsText.split(',').map(term => term.trim()).filter(term => term.length > 0);
       sections.searchTerms = terms;
     }
 

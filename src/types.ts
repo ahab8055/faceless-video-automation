@@ -25,6 +25,7 @@ export interface ViralScript {
 export interface Assets {
   videos: string[];
   audio: string[];
+  scriptText?: string;  // Optional script text for text overlays
 }
 
 // Pexels API types

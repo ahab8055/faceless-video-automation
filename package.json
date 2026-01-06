@@ -13,7 +13,7 @@
     "dev": "ts-node src/index.ts",
     "watch": "tsc --watch",
     "generate": "node dist/index.js generate",
-    "run": "node dist/index.js run",
+    "video": "node dist/index.js run",
     "download": "node dist/index.js download",
     "edit": "node dist/index.js edit",
     "batch": "node dist/index.js batch"

@@ -218,8 +218,8 @@ export async function createVideo(assets: Assets, niche: string): Promise<string
     const tempDir = path.join(outputDir, `temp-${timestamp}`);
     await fs.ensureDir(tempDir);
 
-    // Step 1: Process all videos to 9:16 format
-    console.log(`\n📐 Step 1: Processing videos to 9:16 format...`);
+    // Step 1: Process all videos to 9:16 format with smooth transitions
+    console.log(`\n📐 Step 1: Processing videos to 9:16 format with transitions...`);
     const processedVideos: string[] = [];
     
     for (let i = 0; i < assets.videos.length; i++) {
@@ -227,7 +227,20 @@ export async function createVideo(assets: Assets, niche: string): Promise<string
       const processedPath = path.join(tempDir, `processed-${i}.mp4`);
       
       try {
-        await scaleAndCropVideo(videoPath, processedPath);
+        // Process video with zoom animation to avoid still frames
+        await new Promise<void>((resolve, reject) => {
+          ffmpeg(videoPath)
+            .videoFilters([
+              'scale=1080:1920:force_original_aspect_ratio=increase',
+              'crop=1080:1920',
+              // Add subtle zoom animation to avoid static feel
+              'zoompan=z=\'min(zoom+0.0015,1.5)\'  :d=25*5:x=\'iw/2-(iw/zoom/2)\'  :y=\'ih/2-(ih/zoom/2)\'  :fps=30:s=1080x1920'
+            ])
+            .outputOptions(['-an', '-preset fast', '-crf 23'])
+            .on('end', () => resolve())
+            .on('error', (err: Error) => reject(err))
+            .save(processedPath);
+        });
         processedVideos.push(processedPath);
       } catch (error) {
         console.warn(`⚠️  Warning: Could not process video ${videoPath}: ${(error as Error).message}`);
@@ -249,10 +262,59 @@ export async function createVideo(assets: Assets, niche: string): Promise<string
     const concatenatedPath = path.join(tempDir, 'concatenated.mp4');
     await concatenateVideos(processedVideos, concatenatedPath, audioDuration);
 
-    // Step 4: Merge with audio
-    console.log(`\n🎶 Step 4: Adding audio narration...`);
+    // Step 4: Add text overlays with animations
+    console.log(`\n📝 Step 4: Adding text overlays with animations...`);
+    const videoWithTextPath = path.join(tempDir, 'with-text.mp4');
+    
+    // Get script text from assets if available
+    const scriptText = assets.scriptText || 'WATCH THIS';
+    const sentences = scriptText.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 0);
+    const timePerSentence = audioDuration / Math.max(sentences.length, 1);
+    
+    // Create text filters with fade animations
+    const textFilters: string[] = [];
+    
+    for (let i = 0; i < sentences.length; i++) {
+      const sentence = sentences[i].replace(/'/g, "'\\\\\\\\'");
+      const startTime = timePerSentence * i;
+      const endTime = timePerSentence * (i + 1);
+      const fadeIn = 0.3;
+      const fadeOut = 0.3;
+      
+      textFilters.push(
+        `drawtext=text='${sentence}':fontsize=60:fontcolor=white:bordercolor=black:borderw=4:` +
+        `x=(w-text_w)/2:y=h-250:` +
+        `fontfile=/System/Library/Fonts/Supplemental/Arial Bold.ttf:` +
+        `enable='between(t,${startTime},${endTime})':` +
+        `alpha='if(lt(t,${startTime + fadeIn}),(t-${startTime})/${fadeIn},if(gt(t,${endTime - fadeOut}),1-(t-${endTime - fadeOut})/${fadeOut},1))'`
+      );
+    }
+    
+    await new Promise<void>((resolve, reject) => {
+      const cmd = ffmpeg(concatenatedPath);
+      
+      if (textFilters.length > 0) {
+        cmd.videoFilters(textFilters);
+      }
+      
+      cmd
+        .outputOptions(['-c:v libx264', '-preset fast', '-crf 23', '-pix_fmt yuv420p'])
+        .on('end', () => {
+          console.log('   ✅ Text overlays added with fade animations');
+          resolve();
+        })
+        .on('error', (err: Error) => {
+          console.warn(`⚠️  Warning: Could not add text overlays: ${err.message}`);
+          // Copy concatenated video if text overlay fails
+          fs.copy(concatenatedPath, videoWithTextPath).then(() => resolve()).catch(reject);
+        })
+        .save(videoWithTextPath);
+    });
+    
+    // Step 5: Merge with audio
+    console.log(`\n🎶 Step 5: Adding audio narration...`);
     const finalPath = path.join(outputDir, `${niche.replace(/\s+/g, '-')}-${timestamp}.mp4`);
-    await mergeVideoWithAudio(concatenatedPath, audioFile as string, finalPath);
+    await mergeVideoWithAudio(videoWithTextPath, audioFile as string, finalPath);
 
     // Clean up temporary files
     console.log(`\n🧹 Cleaning up temporary files...`);
