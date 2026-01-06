@@ -52,9 +52,17 @@ cp .env.example .env
 - `pnpm start` - Run the compiled CLI
 - `pnpm dev` - Run TypeScript directly with ts-node (for development)
 - `pnpm watch` - Watch mode for development
-4. Edit `.env` and add your API keys:
+- `pnpm generate` - Generate AI-powered video scripts
+- `pnpm run` - Create complete videos from script generation to final output
+- `pnpm download` - Download assets from Pexels
+- `pnpm edit` - Create videos from your own assets and script files
+- `pnpm batch` - Batch process multiple video niches
+
+## Setup Environment Variables
+
+Edit `.env` and add your API keys:
 ```
-GOOGLE_API_KEY=your_gemini_api_key_here
+MISTRAL_API_KEY=your_mistral_api_key_here
 PEXELS_API_KEY=your_pexels_api_key_here
 ```
 
@@ -189,6 +197,29 @@ Video editing and assembly:
   - Adds animated text overlays (intro, script sentences, outro)
   - Mixes audio tracks (TTS + background music at -15dB)
   - Outputs video, caption, and hashtags files
+  - **Example usage:**
+    ```typescript
+    import { createShort } from './src/editor';
+    
+    await createShort({
+      script: "Your amazing script here. Multiple sentences supported.",
+      caption: "🎥 Your caption here!",
+      hashtags: "#viral #trending #shorts",
+      assetPaths: ["assets/clip1.mp4", "assets/image.jpg"],
+      outputPath: "output/myvideo"
+    });
+    ```
+  - **CLI usage:**
+    ```bash
+    # Using npm script
+    npm run edit assets/my-folder script.txt
+    
+    # Using pnpm
+    pnpm edit assets/my-folder script.txt
+    
+    # Direct execution
+    node dist/index.js edit assets/my-folder script.txt
+    ```
 - `createVideo()`: Legacy video creation from assets
 - `scaleAndCropVideo()`: Format conversion utilities
 - `concatenateVideos()`: Video concatenation
