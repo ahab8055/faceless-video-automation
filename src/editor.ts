@@ -8,6 +8,14 @@ import axios from 'axios';
 import * as googleTTS from 'google-tts-api';
 import { Assets, FFmpegProgress, CreateShortParams } from './types';
 
+// Constants
+const GOOGLE_TTS_MAX_LENGTH = 200; // Google TTS API character limit
+const ESTIMATED_CHARS_PER_MINUTE = 450; // Average speech rate for duration estimation
+const MIN_AUDIO_DURATION = 10; // Minimum audio duration in seconds
+const MAX_AUDIO_DURATION = 45; // Maximum audio duration in seconds
+const BACKGROUND_MUSIC_VOLUME = 0.18; // ~-15dB (formula: 10^(-15/20) ≈ 0.18)
+const COMMON_VIDEO_OUTPUT_OPTIONS = ['-r 30', '-pix_fmt yuv420p', '-preset ultrafast', '-crf 28'];
+
 /**
  * Get video duration in seconds
  * @param videoPath - Path to video file
@@ -392,11 +400,10 @@ async function generateTTSAudio(text: string, outputPath: string): Promise<strin
 
     // Try to use Google TTS API
     try {
-      // Google TTS has a 200 character limit, so we need to split long text
-      const MAX_LENGTH = 200;
+      // Split long text into chunks respecting Google TTS character limit
       const chunks: string[] = [];
       
-      if (text.length <= MAX_LENGTH) {
+      if (text.length <= GOOGLE_TTS_MAX_LENGTH) {
         chunks.push(text);
       } else {
         // Split by sentences to respect natural breaks
@@ -404,7 +411,7 @@ async function generateTTSAudio(text: string, outputPath: string): Promise<strin
         let currentChunk = '';
         
         for (const sentence of sentences) {
-          if ((currentChunk + sentence).length <= MAX_LENGTH) {
+          if ((currentChunk + sentence).length <= GOOGLE_TTS_MAX_LENGTH) {
             currentChunk += sentence;
           } else {
             if (currentChunk) {
@@ -495,8 +502,11 @@ async function generateTTSAudio(text: string, outputPath: string): Promise<strin
       console.warn(`⚠️  TTS API unavailable: ${(ttsError as Error).message}`);
       console.log('   Generating synthetic audio for testing...');
       
-      // Estimate duration based on speech rate (~150 words per minute, ~3 chars per word)
-      const estimatedDuration = Math.max(10, Math.min(45, text.length / 450 * 60));
+      // Estimate duration based on speech rate
+      const estimatedDuration = Math.max(
+        MIN_AUDIO_DURATION, 
+        Math.min(MAX_AUDIO_DURATION, text.length / ESTIMATED_CHARS_PER_MINUTE * 60)
+      );
       
       await fs.ensureDir(path.dirname(outputPath));
       
@@ -521,6 +531,15 @@ async function generateTTSAudio(text: string, outputPath: string): Promise<strin
     console.error('❌ Error generating TTS:', (error as Error).message);
     throw error;
   }
+}
+
+/**
+ * Escape single quotes for FFmpeg drawtext filter
+ * @param text - Text to escape
+ * @returns Escaped text safe for FFmpeg
+ */
+function escapeFFmpegText(text: string): string {
+  return text.replace(/'/g, "'\\\\\\''");
 }
 
 /**
@@ -623,7 +642,7 @@ export async function createShort(params: CreateShortParams): Promise<string> {
               'scale=1080:1920:force_original_aspect_ratio=increase',
               'crop=1080:1920'
             ])
-            .outputOptions(['-r 30', '-pix_fmt yuv420p', '-preset ultrafast', '-crf 28'])
+            .outputOptions(COMMON_VIDEO_OUTPUT_OPTIONS)
             .on('end', () => {
               console.log(`   ✅ Image processed: ${path.basename(processedPath)}`);
               resolve();
@@ -643,7 +662,7 @@ export async function createShort(params: CreateShortParams): Promise<string> {
               'scale=1080:1920:force_original_aspect_ratio=increase',
               'crop=1080:1920'
             ])
-            .outputOptions(['-r 30', '-an', '-pix_fmt yuv420p', '-preset ultrafast', '-crf 28'])
+            .outputOptions([...COMMON_VIDEO_OUTPUT_OPTIONS, '-an']) // Add -an to remove audio
             .on('end', () => {
               console.log(`   ✅ Video processed: ${path.basename(processedPath)}`);
               resolve();
@@ -714,7 +733,7 @@ export async function createShort(params: CreateShortParams): Promise<string> {
     
     // Script sentences
     for (let i = 0; i < sentences.length; i++) {
-      const sentence = sentences[i].replace(/'/g, "'\\\\\\''"); // Escape single quotes for FFmpeg
+      const sentence = escapeFFmpegText(sentences[i]); // Escape special characters
       const startTime = timePerSentence * (i + 1);
       const endTime = timePerSentence * (i + 2);
       
@@ -754,8 +773,8 @@ export async function createShort(params: CreateShortParams): Promise<string> {
         .input(ttsAudioPath)
         .input(musicPath)
         .complexFilter([
-          '[1:a]volume=1.0[tts]',           // TTS at full volume (0dB)
-          '[2:a]volume=0.18[music]',        // Music at -15dB (0.18 = ~-15dB)
+          '[1:a]volume=1.0[tts]',                    // TTS at full volume (0dB)
+          `[2:a]volume=${BACKGROUND_MUSIC_VOLUME}[music]`,  // Music at -15dB
           '[music]atrim=0:' + ttsDuration + '[music_trimmed]', // Trim music to TTS duration
           '[tts][music_trimmed]amix=inputs=2:duration=first[aout]' // Mix both tracks
         ])
