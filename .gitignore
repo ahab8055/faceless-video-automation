@@ -13,6 +13,7 @@ dist/
 # Output files
 output/
 assets/
+music/
 
 # Scripts
 scripts/

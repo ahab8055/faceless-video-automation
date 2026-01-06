@@ -100,6 +100,27 @@ pnpm start download "nature landscape" --count 5
 - ⏱️ **Rate Limiting**: Built-in delays to respect API limits
 - 📁 **Organized Storage**: Creates timestamped folders with metadata
 
+### Edit Video from Assets
+Create a video from your own assets and script:
+```bash
+pnpm start edit [assetsFolder] [scriptFile]
+# Example: pnpm start edit ./my-videos ./script.txt
+```
+
+**Features:**
+- 🎬 **Custom Assets**: Use your own video clips and images
+- 🗣️ **Text-to-Speech**: Generates narration from your script
+- 🎵 **Background Music**: Auto-downloads or uses music from `music/` folder
+- 📝 **Text Overlays**: Animated text with intro, script sentences, and outro
+- 🎨 **Auto-Formatting**: Converts all assets to 1080x1920 vertical format
+- 🔊 **Audio Mixing**: TTS at full volume, background music at -15dB
+- 💾 **Complete Output**: Video, caption.txt, and hashtags.txt files
+
+**Requirements:**
+- Assets folder with `.mp4`, `.mov`, `.avi`, `.jpg`, `.jpeg`, `.png`, or `.webp` files
+- Text file with your script (automatically split into sentences for overlays)
+- Optional: Place `.mp3` files in `music/` folder for custom background music
+
 ### Run Single Video
 Process and create a complete video for a niche:
 ```bash
@@ -156,10 +177,23 @@ Manages media asset downloads:
 - Video priority with photo fallback strategy
 - Vertical format filtering (9:16 aspect ratio)
 - Retry logic and rate limiting
-- Download images for thumbnails
 - Generate TTS audio from scripts
 
-### src/editor.t
+### src/editor.ts
+Video editing and assembly:
+- `createShort()`: Comprehensive video creation function
+  - Generates TTS narration from script text (handles long text with chunking)
+  - Downloads/uses background music (Pixabay URLs or user `music/` folder)
+  - Processes assets to 1080x1920 vertical format
+  - Concatenates and loops videos to match audio duration
+  - Adds animated text overlays (intro, script sentences, outro)
+  - Mixes audio tracks (TTS + background music at -15dB)
+  - Outputs video, caption, and hashtags files
+- `createVideo()`: Legacy video creation from assets
+- `scaleAndCropVideo()`: Format conversion utilities
+- `concatenateVideos()`: Video concatenation
+- `mergeVideoWithAudio()`: Audio merging
+
 ### downloads.js
 Manages media asset downloads: 
 - Search and download Pexels videos
